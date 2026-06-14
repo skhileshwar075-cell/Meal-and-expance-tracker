@@ -24,6 +24,16 @@ useListExpenses({ query: { params: ... }}) // ✗ wrong — causes TS2353
 ## Drizzle numeric fields return strings
 All route handlers must convert with `Number()` before arithmetic on numeric DB columns.
 
+## CRITICAL: Invalid date bug in PostgreSQL DATE columns
+`expensesTable.date`, `mealRecordsTable.date`, `attendanceTable.date` are all PostgreSQL `DATE` type.
+Hardcoded `lte(date, '${year}-${m}-31')` throws "date/time field value out of range" for any month with <31 days (June, April, September, November, February).
+**Fix**: Always compute `const lastDay = new Date(year, month, 0).getDate()` and use `${year}-${m}-${String(lastDay).padStart(2,"0")}` as the end date.
+**Why**: PostgreSQL DATE type rejects invalid dates like '2026-06-31' at query time → 500 error.
+Fixed in: students.ts, expenses.ts (2x), meals.ts (2x), attendance.ts, budgets.ts, billing.ts.
+
+## collectionRate already percentage
+Owner dashboard: backend returns `collectionRate` as 0-100 (already multiplied by 100). Do NOT multiply by 100 again in the frontend.
+
 ## Route ordering
 Specific routes (e.g. `/expenses/summary`, `/budgets/current`) must be registered BEFORE parameterized routes (`:id`) in each Express route file.
 

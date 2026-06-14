@@ -81,8 +81,10 @@ router.post("/bills", requireAuth, requireRole("owner"), async (req, res) => {
 
     // Count attendance
     const m = String(month).padStart(2, "0");
+    const lastDayOfMonth = new Date(Number(year), Number(month), 0).getDate();
+    const monthEndStr = `${year}-${m}-${String(lastDayOfMonth).padStart(2, "0")}`;
     const attRecords = await db.select().from(attendanceTable).where(
-      and(eq(attendanceTable.customerId, customerId), sql`date >= '${sql.raw(`${year}-${m}-01`)}' AND date <= '${sql.raw(`${year}-${m}-31`)}'`)
+      and(eq(attendanceTable.customerId, customerId), sql`date >= '${sql.raw(`${year}-${m}-01`)}' AND date <= '${sql.raw(monthEndStr)}'`)
     );
     const mealsConsumed = attRecords.reduce((s, a) => s + (a.morningPresent ? 1 : 0) + (a.eveningPresent ? 1 : 0), 0);
 

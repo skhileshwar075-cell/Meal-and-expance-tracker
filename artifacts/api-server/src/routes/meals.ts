@@ -14,8 +14,10 @@ router.get("/meals", requireAuth, requireRole("student"), async (req, res) => {
     const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
     const year = req.query.year ? Number(req.query.year) : now.getFullYear();
     const m = String(month).padStart(2, "0");
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
     const rows = await db.select().from(mealRecordsTable).where(
-      and(eq(mealRecordsTable.studentId, studentId), gte(mealRecordsTable.date, `${year}-${m}-01`), lte(mealRecordsTable.date, `${year}-${m}-31`))
+      and(eq(mealRecordsTable.studentId, studentId), gte(mealRecordsTable.date, `${year}-${m}-01`), lte(mealRecordsTable.date, endDate))
     );
     res.json(rows);
   } catch (err) {
@@ -66,8 +68,10 @@ router.get("/meals/summary", requireAuth, requireRole("student"), async (req, re
     const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
     const year = req.query.year ? Number(req.query.year) : now.getFullYear();
     const m = String(month).padStart(2, "0");
+    const lastDaySummary = new Date(year, month, 0).getDate();
+    const endDateSummary = `${year}-${m}-${String(lastDaySummary).padStart(2, "0")}`;
     const rows = await db.select().from(mealRecordsTable).where(
-      and(eq(mealRecordsTable.studentId, studentId), gte(mealRecordsTable.date, `${year}-${m}-01`), lte(mealRecordsTable.date, `${year}-${m}-31`))
+      and(eq(mealRecordsTable.studentId, studentId), gte(mealRecordsTable.date, `${year}-${m}-01`), lte(mealRecordsTable.date, endDateSummary))
     );
     const totalMorning = rows.filter(r => r.morningMeal).length;
     const totalEvening = rows.filter(r => r.eveningMeal).length;

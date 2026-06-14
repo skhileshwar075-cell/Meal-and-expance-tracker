@@ -63,8 +63,10 @@ router.get("/budgets/current", requireAuth, requireRole("student"), async (req, 
     );
     const monthlyAmount = budget ? Number(budget.monthlyAmount) : 0;
     const m = String(month).padStart(2, "0");
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
     const rows = await db.select().from(expensesTable).where(
-      and(eq(expensesTable.studentId, studentId), gte(expensesTable.date, `${year}-${m}-01`), lte(expensesTable.date, `${year}-${m}-31`), sql`${expensesTable.deletedAt} IS NULL`)
+      and(eq(expensesTable.studentId, studentId), gte(expensesTable.date, `${year}-${m}-01`), lte(expensesTable.date, endDate), sql`${expensesTable.deletedAt} IS NULL`)
     );
     const spent = rows.reduce((s, e) => s + Number(e.amount), 0);
     const daysInMonth = new Date(year, month, 0).getDate();

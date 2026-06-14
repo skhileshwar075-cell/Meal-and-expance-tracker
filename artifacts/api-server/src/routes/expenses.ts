@@ -14,8 +14,10 @@ router.get("/expenses", requireAuth, requireRole("student"), async (req, res) =>
     const conditions = [eq(expensesTable.studentId, studentId), sql`${expensesTable.deletedAt} IS NULL`];
     if (month && year) {
       const m = String(month).padStart(2, "0");
+      const lastDay = new Date(Number(year), Number(month), 0).getDate();
+      const endDate = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
       conditions.push(gte(expensesTable.date, `${year}-${m}-01`));
-      conditions.push(lte(expensesTable.date, `${year}-${m}-31`));
+      conditions.push(lte(expensesTable.date, endDate));
     }
     if (category) conditions.push(eq(expensesTable.category, String(category)));
     const rows = await db.select().from(expensesTable).where(and(...conditions)).orderBy(desc(expensesTable.date));
@@ -56,11 +58,13 @@ router.get("/expenses/summary", requireAuth, requireRole("student"), async (req,
     const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1;
     const year = req.query.year ? Number(req.query.year) : now.getFullYear();
     const m = String(month).padStart(2, "0");
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
     const rows = await db.select().from(expensesTable).where(
       and(
         eq(expensesTable.studentId, studentId),
         gte(expensesTable.date, `${year}-${m}-01`),
-        lte(expensesTable.date, `${year}-${m}-31`),
+        lte(expensesTable.date, endDate),
         sql`${expensesTable.deletedAt} IS NULL`
       )
     );

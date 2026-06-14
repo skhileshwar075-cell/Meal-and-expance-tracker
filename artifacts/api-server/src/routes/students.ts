@@ -75,11 +75,13 @@ router.get("/students/dashboard", requireAuth, requireRole("student"), async (re
 
     // Total spent this month
     const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthEnd = `${monthStr}-${String(lastDay).padStart(2, "0")}`;
     const expenses = await db.select().from(expensesTable).where(
       and(
         eq(expensesTable.studentId, studentId),
         gte(expensesTable.date, `${monthStr}-01`),
-        lte(expensesTable.date, `${monthStr}-31`),
+        lte(expensesTable.date, monthEnd),
         sql`${expensesTable.deletedAt} IS NULL`
       )
     );
@@ -92,7 +94,7 @@ router.get("/students/dashboard", requireAuth, requireRole("student"), async (re
       and(
         eq(mealRecordsTable.studentId, studentId),
         gte(mealRecordsTable.date, `${monthStr}-01`),
-        lte(mealRecordsTable.date, `${monthStr}-31`)
+        lte(mealRecordsTable.date, monthEnd)
       )
     );
     const totalMeals = mealRecs.reduce((s, m) => s + (m.morningMeal ? 1 : 0) + (m.eveningMeal ? 1 : 0), 0);

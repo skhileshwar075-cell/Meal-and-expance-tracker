@@ -90,8 +90,10 @@ router.get("/attendance", requireAuth, requireRole("owner"), async (req, res) =>
     if (customerId) conditions.push(eq(attendanceTable.customerId, Number(customerId)));
     if (month && year) {
       const m = String(month).padStart(2, "0");
+      const lastDay = new Date(Number(year), Number(month), 0).getDate();
+      const endDate = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
       conditions.push(gte(attendanceTable.date, `${year}-${m}-01`));
-      conditions.push(lte(attendanceTable.date, `${year}-${m}-31`));
+      conditions.push(lte(attendanceTable.date, endDate));
     }
     const records = await db.select().from(attendanceTable).where(and(...conditions));
     res.json(records.map(r => ({ ...r, customerName: custMap[r.customerId] ?? "" })));
