@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Smart Tiffin & Student Analytics Platform"
+version = "1.0.0"
+id = "artifacts/smart-tiffin"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25282
+
+[services.development]
+run = "pnpm --filter @workspace/smart-tiffin run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/smart-tiffin", "run", "build" ]
+publicDir = "artifacts/smart-tiffin/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25282"
+BASE_PATH = "/"

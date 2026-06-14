@@ -3,20 +3,50 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Smart Tiffin & Student Analytics Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: students
+    description: Student profile and management
+  - name: expenses
+    description: Expense management
+  - name: budgets
+    description: Budget management
+  - name: meals
+    description: Meal tracking
+  - name: student-analytics
+    description: Student analytics and insights
+  - name: owners
+    description: Tiffin owner management
+  - name: customers
+    description: Customer management
+  - name: meal-plans
+    description: Meal plan management
+  - name: attendance
+    description: Meal attendance tracking
+  - name: billing
+    description: Billing and invoicing
+  - name: payments
+    description: Payment tracking
+  - name: owner-analytics
+    description: Owner analytics and insights
+  - name: notifications
+    description: Notification management
+  - name: connections
+    description: Student-tiffin service connections
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +54,1142 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── AUTH ──────────────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user (student or owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshInput"
+      responses:
+        "200":
+          description: New tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  # ── STUDENT PROFILE ───────────────────────────────────────────────────────
+  /students/profile:
+    get:
+      operationId: getStudentProfile
+      tags: [students]
+      summary: Get student profile
+      responses:
+        "200":
+          description: Student profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+    put:
+      operationId: updateStudentProfile
+      tags: [students]
+      summary: Update student profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentProfileInput"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentProfile"
+
+  /students/dashboard:
+    get:
+      operationId: getStudentDashboard
+      tags: [students]
+      summary: Get student dashboard summary
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentDashboard"
+
+  # ── EXPENSES ──────────────────────────────────────────────────────────────
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: List all expenses for the current student
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Expense"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Create a new expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [expenses]
+      summary: Get a single expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    put:
+      operationId: updateExpense
+      tags: [expenses]
+      summary: Update an expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "200":
+          description: Updated expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      summary: Delete an expense
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /expenses/summary:
+    get:
+      operationId: getExpenseSummary
+      tags: [expenses]
+      summary: Get expense summary and breakdown by category
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpenseSummary"
+
+  # ── BUDGETS ───────────────────────────────────────────────────────────────
+  /budgets:
+    get:
+      operationId: listBudgets
+      tags: [budgets]
+      summary: List all budgets for the student
+      responses:
+        "200":
+          description: Budgets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Budget"
+    post:
+      operationId: createBudget
+      tags: [budgets]
+      summary: Create a new budget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetInput"
+      responses:
+        "201":
+          description: Created budget
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+
+  /budgets/current:
+    get:
+      operationId: getCurrentBudget
+      tags: [budgets]
+      summary: Get current month's budget and status
+      responses:
+        "200":
+          description: Current budget
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetStatus"
+
+  /budgets/{id}:
+    put:
+      operationId: updateBudget
+      tags: [budgets]
+      summary: Update a budget
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetInput"
+      responses:
+        "200":
+          description: Updated budget
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Budget"
+
+  # ── MEALS ─────────────────────────────────────────────────────────────────
+  /meals:
+    get:
+      operationId: listMeals
+      tags: [meals]
+      summary: List meal records for the student
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Meal records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MealRecord"
+    post:
+      operationId: createMeal
+      tags: [meals]
+      summary: Create or update a meal record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealInput"
+      responses:
+        "201":
+          description: Meal record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealRecord"
+
+  /meals/summary:
+    get:
+      operationId: getMealSummary
+      tags: [meals]
+      summary: Get meal summary stats
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Meal summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealSummary"
+
+  # ── STUDENT ANALYTICS ─────────────────────────────────────────────────────
+  /analytics/student/spending-trend:
+    get:
+      operationId: getSpendingTrend
+      tags: [student-analytics]
+      summary: Get spending trend over time
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+        - name: months
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Spending trend data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingTrend"
+
+  /analytics/student/scores:
+    get:
+      operationId: getStudentScores
+      tags: [student-analytics]
+      summary: Get budget risk score, financial discipline score, savings rate
+      responses:
+        "200":
+          description: Analytics scores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentScores"
+
+  /analytics/student/insights:
+    get:
+      operationId: getStudentInsights
+      tags: [student-analytics]
+      summary: Get AI-like smart insights for spending patterns
+      responses:
+        "200":
+          description: Smart insights
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Insight"
+
+  /analytics/student/expense-patterns:
+    get:
+      operationId: getExpensePatterns
+      tags: [student-analytics]
+      summary: Get recurring expenses and frequent categories
+      responses:
+        "200":
+          description: Expense patterns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpensePatterns"
+
+  # ── OWNER PROFILE ─────────────────────────────────────────────────────────
+  /owners/profile:
+    get:
+      operationId: getOwnerProfile
+      tags: [owners]
+      summary: Get owner business profile
+      responses:
+        "200":
+          description: Owner profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerProfile"
+    put:
+      operationId: updateOwnerProfile
+      tags: [owners]
+      summary: Update owner business profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OwnerProfileInput"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerProfile"
+
+  /owners/dashboard:
+    get:
+      operationId: getOwnerDashboard
+      tags: [owners]
+      summary: Get owner dashboard summary
+      responses:
+        "200":
+          description: Owner dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerDashboard"
+
+  /owners/service-code:
+    post:
+      operationId: generateServiceCode
+      tags: [owners]
+      summary: Generate a new service invite code
+      responses:
+        "200":
+          description: Service code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceCode"
+
+  # ── CUSTOMERS ─────────────────────────────────────────────────────────────
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List all customers for the owner
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, all]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a new customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Get a single customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    put:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "200":
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Delete a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /customers/top:
+    get:
+      operationId: getTopCustomers
+      tags: [customers]
+      summary: Get top customers ranked by attendance, payments, and loyalty
+      responses:
+        "200":
+          description: Top customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopCustomer"
+
+  # ── MEAL PLANS ────────────────────────────────────────────────────────────
+  /meal-plans:
+    get:
+      operationId: listMealPlans
+      tags: [meal-plans]
+      summary: List meal plans for the owner
+      responses:
+        "200":
+          description: Meal plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MealPlan"
+    post:
+      operationId: createMealPlan
+      tags: [meal-plans]
+      summary: Create a new meal plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPlanInput"
+      responses:
+        "201":
+          description: Created meal plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlan"
+
+  /meal-plans/{id}:
+    put:
+      operationId: updateMealPlan
+      tags: [meal-plans]
+      summary: Update a meal plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPlanInput"
+      responses:
+        "200":
+          description: Updated meal plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlan"
+    delete:
+      operationId: deleteMealPlan
+      tags: [meal-plans]
+      summary: Delete a meal plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ── ATTENDANCE ────────────────────────────────────────────────────────────
+  /attendance:
+    get:
+      operationId: listAttendance
+      tags: [attendance]
+      summary: List attendance records (owner view)
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+    post:
+      operationId: markAttendance
+      tags: [attendance]
+      summary: Mark attendance for one or more customers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceInput"
+      responses:
+        "200":
+          description: Attendance marked
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+
+  /attendance/today:
+    get:
+      operationId: getTodayAttendance
+      tags: [attendance]
+      summary: Get today's attendance summary
+      responses:
+        "200":
+          description: Today's attendance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayAttendance"
+
+  /attendance/forecast:
+    get:
+      operationId: getMealForecast
+      tags: [attendance]
+      summary: Forecast tomorrow's meal demand
+      responses:
+        "200":
+          description: Meal demand forecast
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealForecast"
+
+  # ── BILLING ───────────────────────────────────────────────────────────────
+  /bills:
+    get:
+      operationId: listBills
+      tags: [billing]
+      summary: List bills for the owner
+      parameters:
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [paid, unpaid, partial, all]
+      responses:
+        "200":
+          description: Bills
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bill"
+    post:
+      operationId: generateBill
+      tags: [billing]
+      summary: Generate a bill for a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillGenerateInput"
+      responses:
+        "201":
+          description: Generated bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+
+  /bills/{id}:
+    get:
+      operationId: getBill
+      tags: [billing]
+      summary: Get a single bill
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+    put:
+      operationId: updateBill
+      tags: [billing]
+      summary: Update a bill (add discounts, extra charges)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BillUpdateInput"
+      responses:
+        "200":
+          description: Updated bill
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bill"
+
+  /bills/student:
+    get:
+      operationId: getStudentBills
+      tags: [billing]
+      summary: Get bills for the connected student
+      responses:
+        "200":
+          description: Student bills
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bill"
+
+  # ── PAYMENTS ──────────────────────────────────────────────────────────────
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List payments for the owner
+      parameters:
+        - name: customerId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [paid, unpaid, partial, all]
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+    post:
+      operationId: recordPayment
+      tags: [payments]
+      summary: Record a payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Recorded payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments/collection-summary:
+    get:
+      operationId: getCollectionSummary
+      tags: [payments]
+      summary: Get payment collection analytics
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Collection summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollectionSummary"
+
+  # ── OWNER ANALYTICS ───────────────────────────────────────────────────────
+  /analytics/owner/revenue:
+    get:
+      operationId: getRevenueAnalytics
+      tags: [owner-analytics]
+      summary: Get revenue analytics (daily/weekly/monthly)
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+        - name: months
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Revenue analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueAnalytics"
+
+  /analytics/owner/retention:
+    get:
+      operationId: getCustomerRetention
+      tags: [owner-analytics]
+      summary: Get customer retention metrics
+      responses:
+        "200":
+          description: Retention metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerRetention"
+
+  /analytics/owner/churn:
+    get:
+      operationId: getChurnRisk
+      tags: [owner-analytics]
+      summary: Get customer churn risk analysis
+      responses:
+        "200":
+          description: Churn risk data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChurnRisk"
+
+  /analytics/owner/overview:
+    get:
+      operationId: getOwnerAnalyticsOverview
+      tags: [owner-analytics]
+      summary: Get overall owner analytics snapshot
+      responses:
+        "200":
+          description: Owner analytics overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OwnerAnalyticsOverview"
+
+  # ── NOTIFICATIONS ─────────────────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for the current user
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: All marked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ── SERVICE CONNECTIONS ───────────────────────────────────────────────────
+  /connections/join:
+    post:
+      operationId: joinTiffinService
+      tags: [connections]
+      summary: Student joins a tiffin service using an invite code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinServiceInput"
+      responses:
+        "200":
+          description: Joined successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceConnection"
+
+  /connections/my:
+    get:
+      operationId: getMyConnection
+      tags: [connections]
+      summary: Get the student's current tiffin service connection
+      responses:
+        "200":
+          description: Current connection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceConnection"
+
+  /connections/leave:
+    delete:
+      operationId: leaveService
+      tags: [connections]
+      summary: Student leaves a tiffin service
+      responses:
+        "200":
+          description: Left service
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /connections/students:
+    get:
+      operationId: getConnectedStudents
+      tags: [connections]
+      summary: Owner views all students connected to their service
+      responses:
+        "200":
+          description: Connected students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConnectedStudent"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +1200,948 @@ components:
       required:
         - status
 
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    # ── AUTH SCHEMAS ──────────────────────────────────────────────────────
+    RegisterInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        role:
+          type: string
+          enum: [student, owner]
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    RefreshInput:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [accessToken, refreshToken, user]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, name, email, role, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [student, owner]
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── STUDENT SCHEMAS ───────────────────────────────────────────────────
+    StudentProfile:
+      type: object
+      required: [id, userId, name, email]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        college:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        profilePicture:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    StudentProfileInput:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        college:
+          type: string
+        address:
+          type: string
+
+    StudentDashboard:
+      type: object
+      required: [monthlyBudget, amountSpent, remainingBudget, totalMeals, savings, budgetRiskScore]
+      properties:
+        monthlyBudget:
+          type: number
+        amountSpent:
+          type: number
+        remainingBudget:
+          type: number
+        totalMeals:
+          type: integer
+        savings:
+          type: number
+        budgetRiskScore:
+          type: number
+        recentExpenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Insight"
+
+    # ── EXPENSE SCHEMAS ───────────────────────────────────────────────────
+    Expense:
+      type: object
+      required: [id, studentId, date, category, amount, createdAt]
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        date:
+          type: string
+          format: date
+        category:
+          type: string
+          enum: [food, transport, education, entertainment, shopping, medical, other]
+        amount:
+          type: number
+        description:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    ExpenseInput:
+      type: object
+      required: [date, category, amount]
+      properties:
+        date:
+          type: string
+          format: date
+        category:
+          type: string
+          enum: [food, transport, education, entertainment, shopping, medical, other]
+        amount:
+          type: number
+          minimum: 0
+        description:
+          type: string
+
+    ExpenseSummary:
+      type: object
+      required: [total, byCategory, dailyAverage, daysInMonth]
+      properties:
+        total:
+          type: number
+        byCategory:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryBreakdown"
+        dailyAverage:
+          type: number
+        daysInMonth:
+          type: integer
+        topCategory:
+          type: ["string", "null"]
+
+    CategoryBreakdown:
+      type: object
+      required: [category, amount, percentage, count]
+      properties:
+        category:
+          type: string
+        amount:
+          type: number
+        percentage:
+          type: number
+        count:
+          type: integer
+
+    # ── BUDGET SCHEMAS ────────────────────────────────────────────────────
+    Budget:
+      type: object
+      required: [id, studentId, month, year, monthlyAmount, createdAt]
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        month:
+          type: integer
+        year:
+          type: integer
+        monthlyAmount:
+          type: number
+        weeklyAmount:
+          type: ["number", "null"]
+        alertThreshold:
+          type: ["number", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    BudgetInput:
+      type: object
+      required: [month, year, monthlyAmount]
+      properties:
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        year:
+          type: integer
+        monthlyAmount:
+          type: number
+          minimum: 0
+        weeklyAmount:
+          type: number
+        alertThreshold:
+          type: number
+          minimum: 0
+          maximum: 100
+
+    BudgetStatus:
+      type: object
+      required: [budget, spent, remaining, percentUsed, daysLeft, projectedSpend]
+      properties:
+        budget:
+          $ref: "#/components/schemas/Budget"
+        spent:
+          type: number
+        remaining:
+          type: number
+        percentUsed:
+          type: number
+        daysLeft:
+          type: integer
+        projectedSpend:
+          type: number
+        isAtRisk:
+          type: boolean
+
+    # ── MEAL SCHEMAS ──────────────────────────────────────────────────────
+    MealRecord:
+      type: object
+      required: [id, studentId, date, morningMeal, eveningMeal]
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        date:
+          type: string
+          format: date
+        morningMeal:
+          type: boolean
+        eveningMeal:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+
+    MealInput:
+      type: object
+      required: [date, morningMeal, eveningMeal]
+      properties:
+        date:
+          type: string
+          format: date
+        morningMeal:
+          type: boolean
+        eveningMeal:
+          type: boolean
+        notes:
+          type: string
+
+    MealSummary:
+      type: object
+      required: [totalMorning, totalEvening, totalMeals, daysTracked]
+      properties:
+        totalMorning:
+          type: integer
+        totalEvening:
+          type: integer
+        totalMeals:
+          type: integer
+        daysTracked:
+          type: integer
+        averageMealsPerDay:
+          type: number
+
+    # ── STUDENT ANALYTICS SCHEMAS ─────────────────────────────────────────
+    SpendingTrend:
+      type: object
+      required: [period, data]
+      properties:
+        period:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+
+    TrendPoint:
+      type: object
+      required: [label, amount]
+      properties:
+        label:
+          type: string
+        amount:
+          type: number
+        date:
+          type: ["string", "null"]
+
+    StudentScores:
+      type: object
+      required: [budgetRiskScore, financialDisciplineScore, savingsRate, expenseGrowthRate]
+      properties:
+        budgetRiskScore:
+          type: number
+        financialDisciplineScore:
+          type: number
+        savingsRate:
+          type: number
+        expenseGrowthRate:
+          type: number
+        savingsAmount:
+          type: number
+
+    Insight:
+      type: object
+      required: [id, type, message, severity]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [budget_warning, spending_pattern, meal_reminder, overspend, saving_tip]
+        message:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, danger]
+        category:
+          type: ["string", "null"]
+
+    ExpensePatterns:
+      type: object
+      required: [recurringExpenses, frequentCategories, weeklyPattern]
+      properties:
+        recurringExpenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecurringExpense"
+        frequentCategories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryBreakdown"
+        weeklyPattern:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+
+    RecurringExpense:
+      type: object
+      required: [category, averageAmount, frequency, count]
+      properties:
+        category:
+          type: string
+        averageAmount:
+          type: number
+        frequency:
+          type: string
+        count:
+          type: integer
+
+    # ── OWNER SCHEMAS ─────────────────────────────────────────────────────
+    OwnerProfile:
+      type: object
+      required: [id, userId, businessName, ownerName, email]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        businessName:
+          type: string
+        ownerName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        serviceCode:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    OwnerProfileInput:
+      type: object
+      properties:
+        businessName:
+          type: string
+        ownerName:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+
+    OwnerDashboard:
+      type: object
+      required: [activeCustomers, todaysMeals, monthlyRevenue, pendingPayments, collectionRate]
+      properties:
+        activeCustomers:
+          type: integer
+        todaysMeals:
+          type: integer
+        monthlyRevenue:
+          type: number
+        pendingPayments:
+          type: number
+        collectionRate:
+          type: number
+        recentPayments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Insight"
+
+    ServiceCode:
+      type: object
+      required: [code, expiresAt]
+      properties:
+        code:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+
+    # ── CUSTOMER SCHEMAS ──────────────────────────────────────────────────
+    Customer:
+      type: object
+      required: [id, ownerId, name, status, startDate, createdAt]
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: integer
+        name:
+          type: string
+        mobile:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+        planId:
+          type: ["integer", "null"]
+        planName:
+          type: ["string", "null"]
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+        totalBilled:
+          type: number
+        totalPaid:
+          type: number
+        outstandingAmount:
+          type: number
+        linkedStudentId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    CustomerInput:
+      type: object
+      required: [name, startDate, status]
+      properties:
+        name:
+          type: string
+          minLength: 2
+        mobile:
+          type: string
+        address:
+          type: string
+        planId:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [active, inactive, suspended]
+
+    TopCustomer:
+      type: object
+      required: [id, name, attendanceRate, totalPaid, loyaltyMonths, rank]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        attendanceRate:
+          type: number
+        totalPaid:
+          type: number
+        loyaltyMonths:
+          type: integer
+        rank:
+          type: integer
+        outstandingAmount:
+          type: number
+
+    # ── MEAL PLAN SCHEMAS ─────────────────────────────────────────────────
+    MealPlan:
+      type: object
+      required: [id, ownerId, name, planType, pricePerMonth, createdAt]
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: integer
+        name:
+          type: string
+        planType:
+          type: string
+          enum: [morning_only, evening_only, both_meals]
+        pricePerMonth:
+          type: number
+        pricePerMeal:
+          type: ["number", "null"]
+        billingType:
+          type: string
+          enum: [monthly, per_meal]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    MealPlanInput:
+      type: object
+      required: [name, planType, pricePerMonth, billingType]
+      properties:
+        name:
+          type: string
+        planType:
+          type: string
+          enum: [morning_only, evening_only, both_meals]
+        pricePerMonth:
+          type: number
+          minimum: 0
+        pricePerMeal:
+          type: number
+          minimum: 0
+        billingType:
+          type: string
+          enum: [monthly, per_meal]
+        isActive:
+          type: boolean
+
+    # ── ATTENDANCE SCHEMAS ────────────────────────────────────────────────
+    AttendanceRecord:
+      type: object
+      required: [id, customerId, customerName, date, morningPresent, eveningPresent]
+      properties:
+        id:
+          type: integer
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        date:
+          type: string
+          format: date
+        morningPresent:
+          type: boolean
+        eveningPresent:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+
+    AttendanceInput:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceEntry"
+
+    AttendanceEntry:
+      type: object
+      required: [customerId, date, morningPresent, eveningPresent]
+      properties:
+        customerId:
+          type: integer
+        date:
+          type: string
+          format: date
+        morningPresent:
+          type: boolean
+        eveningPresent:
+          type: boolean
+        notes:
+          type: string
+
+    TodayAttendance:
+      type: object
+      required: [date, totalCustomers, morningCount, eveningCount, records]
+      properties:
+        date:
+          type: string
+          format: date
+        totalCustomers:
+          type: integer
+        morningCount:
+          type: integer
+        eveningCount:
+          type: integer
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceRecord"
+
+    MealForecast:
+      type: object
+      required: [date, predictedMorning, predictedEvening, morningConfidence, eveningConfidence]
+      properties:
+        date:
+          type: string
+          format: date
+        predictedMorning:
+          type: integer
+        predictedEvening:
+          type: integer
+        morningConfidence:
+          type: number
+        eveningConfidence:
+          type: number
+        basedOnDays:
+          type: integer
+
+    # ── BILLING SCHEMAS ───────────────────────────────────────────────────
+    Bill:
+      type: object
+      required: [id, customerId, customerName, month, year, mealsConsumed, rate, totalAmount, status, createdAt]
+      properties:
+        id:
+          type: integer
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        month:
+          type: integer
+        year:
+          type: integer
+        mealsConsumed:
+          type: integer
+        rate:
+          type: number
+        discount:
+          type: number
+        extraCharges:
+          type: number
+        totalAmount:
+          type: number
+        status:
+          type: string
+          enum: [paid, unpaid, partial]
+        paidAmount:
+          type: number
+        dueDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    BillGenerateInput:
+      type: object
+      required: [customerId, month, year]
+      properties:
+        customerId:
+          type: integer
+        month:
+          type: integer
+        year:
+          type: integer
+        discount:
+          type: number
+        extraCharges:
+          type: number
+        notes:
+          type: string
+        dueDate:
+          type: string
+          format: date
+
+    BillUpdateInput:
+      type: object
+      properties:
+        discount:
+          type: number
+        extraCharges:
+          type: number
+        notes:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [paid, unpaid, partial]
+
+    # ── PAYMENT SCHEMAS ───────────────────────────────────────────────────
+    Payment:
+      type: object
+      required: [id, customerId, customerName, billId, amount, status, createdAt]
+      properties:
+        id:
+          type: integer
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        billId:
+          type: integer
+        amount:
+          type: number
+        status:
+          type: string
+          enum: [paid, unpaid, partial]
+        paymentDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    PaymentInput:
+      type: object
+      required: [billId, amount, status]
+      properties:
+        billId:
+          type: integer
+        amount:
+          type: number
+          minimum: 0
+        status:
+          type: string
+          enum: [paid, unpaid, partial]
+        paymentDate:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    CollectionSummary:
+      type: object
+      required: [totalBilled, totalCollected, paidCount, unpaidCount, partialCount, collectionRate, outstandingAmount]
+      properties:
+        totalBilled:
+          type: number
+        totalCollected:
+          type: number
+        paidCount:
+          type: integer
+        unpaidCount:
+          type: integer
+        partialCount:
+          type: integer
+        collectionRate:
+          type: number
+        outstandingAmount:
+          type: number
+
+    # ── OWNER ANALYTICS SCHEMAS ───────────────────────────────────────────
+    RevenueAnalytics:
+      type: object
+      required: [period, data, totalRevenue, growth]
+      properties:
+        period:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendPoint"
+        totalRevenue:
+          type: number
+        growth:
+          type: number
+
+    CustomerRetention:
+      type: object
+      required: [activeCustomers, lostCustomers, newCustomers, retentionRate]
+      properties:
+        activeCustomers:
+          type: integer
+        lostCustomers:
+          type: integer
+        newCustomers:
+          type: integer
+        retentionRate:
+          type: number
+        averageTenureMonths:
+          type: number
+
+    ChurnRisk:
+      type: object
+      required: [customerId, customerName, riskScore, riskLevel, reasons]
+      properties:
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        riskScore:
+          type: number
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+        reasons:
+          type: array
+          items:
+            type: string
+        lastAttendanceDate:
+          type: ["string", "null"]
+
+    OwnerAnalyticsOverview:
+      type: object
+      required: [revenueGrowth, retentionRate, churnRisk, collectionEfficiency, avgAttendanceRate]
+      properties:
+        revenueGrowth:
+          type: number
+        retentionRate:
+          type: number
+        churnRisk:
+          type: number
+        collectionEfficiency:
+          type: number
+        avgAttendanceRate:
+          type: number
+
+    # ── NOTIFICATION SCHEMAS ──────────────────────────────────────────────
+    Notification:
+      type: object
+      required: [id, userId, type, title, message, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: string
+          enum: [budget_alert, payment_overdue, churn_risk, attendance_anomaly, unusual_spending, meal_reminder, system]
+        title:
+          type: string
+        message:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    # ── CONNECTION SCHEMAS ────────────────────────────────────────────────
+    JoinServiceInput:
+      type: object
+      required: [serviceCode]
+      properties:
+        serviceCode:
+          type: string
+
+    ServiceConnection:
+      type: object
+      required: [id, studentId, ownerId, businessName, status, joinedAt]
+      properties:
+        id:
+          type: integer
+        studentId:
+          type: integer
+        ownerId:
+          type: integer
+        businessName:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+        joinedAt:
+          type: string
+          format: date-time
+
+    ConnectedStudent:
+      type: object
+      required: [connectionId, studentId, studentName, email, joinedAt, status]
+      properties:
+        connectionId:
+          type: integer
+        studentId:
+          type: integer
+        studentName:
+          type: string
+        email:
+          type: string
+        joinedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, inactive]
+        customerId:
+          type: ["integer", "null"]

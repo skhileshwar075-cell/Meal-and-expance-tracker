@@ -1,0 +1,1 @@
+- [Smart Tiffin project setup](smart-tiffin-setup.md) — dual-role SaaS app, key quirks around hooks, imports, and route ordering
