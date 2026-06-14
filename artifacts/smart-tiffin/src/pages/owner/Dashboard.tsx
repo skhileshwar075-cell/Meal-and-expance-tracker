@@ -82,7 +82,7 @@ export default function OwnerDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{(dashboard.collectionRate * 100).toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{dashboard.collectionRate.toFixed(1)}%</div>
             <div className="text-xs text-muted-foreground mt-1">
               {dashboard.pendingPayments} pending payments
             </div>

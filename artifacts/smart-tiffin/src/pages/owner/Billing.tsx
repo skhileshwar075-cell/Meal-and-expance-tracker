@@ -159,7 +159,7 @@ export default function Billing() {
           {bills.map(bill => {
             const { label, color, icon: Icon } = STATUS_CONFIG[bill.status] ?? STATUS_CONFIG.unpaid;
             return (
-              <Card key={bill.id} className="cursor-pointer hover:shadow-sm transition-shadow" onClick={() => { setEditBill(bill); setEditForm({ discount: String(bill.discount), extraCharges: String(bill.extraCharges), notes: bill.notes ?? "", status: bill.status }); }}>
+              <Card key={bill.id} className="cursor-pointer hover:shadow-sm transition-shadow" onClick={() => { setEditBill(bill); setEditForm({ discount: bill.discount != null ? String(bill.discount) : "", extraCharges: bill.extraCharges != null ? String(bill.extraCharges) : "", notes: bill.notes ?? "", status: bill.status }); }}>
                 <CardContent className="py-3 px-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
