@@ -3,21 +3,31 @@ import {
   useListCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer,
   useListMealPlans, getListCustomersQueryKey, CustomerInputStatus,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, Plus, Trash2, Pencil, UserCircle, Search, ChevronLeft, ChevronRight, Phone, MapPin, CalendarDays } from "lucide-react";
+import { Loader2, Plus, Trash2, Pencil, UserCircle, Search, ChevronLeft, ChevronRight, Phone, MapPin, CalendarDays, BarChart2, IndianRupee, UtensilsCrossed, Receipt, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function authFetch(url: string) {
+  const token = localStorage.getItem("smart_tiffin_access_token");
+  return fetch(url, {
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  }).then(async r => { if (!r.ok) throw new Error(r.statusText); return r.json(); });
+}
 
 const PAGE_SIZE = 10;
 
@@ -45,6 +55,7 @@ export default function Customers() {
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<any>(null);
+  const [summaryCustomerId, setSummaryCustomerId] = useState<number | null>(null);
 
   const { data: customers, isLoading } = useListCustomers({ status: statusFilter as any });
   const { data: plans } = useListMealPlans();
@@ -215,6 +226,14 @@ export default function Customers() {
                       </div>
                       <Button
                         variant="ghost" size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+                        title="View profile"
+                        onClick={() => setSummaryCustomerId(customer.id)}
+                      >
+                        <BarChart2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-foreground"
                         onClick={() => openEdit(customer)}
                       >
@@ -275,6 +294,12 @@ export default function Customers() {
           <CustomerForm form={editForm} onSubmit={onEdit} isPending={updateCustomer.isPending} label="Save Changes" plans={plans ?? []} />
         </DialogContent>
       </Dialog>
+
+      {/* Customer Summary modal */}
+      <CustomerSummaryDialog
+        customerId={summaryCustomerId}
+        onClose={() => setSummaryCustomerId(null)}
+      />
     </div>
   );
 }
@@ -359,5 +384,125 @@ function CustomerForm({ form, onSubmit, isPending, label, plans }: {
         </Button>
       </form>
     </Form>
+  );
+}
+
+const BILL_STATUS: Record<string, { label: string; color: string; icon: any }> = {
+  paid:    { label: "Paid",    color: "text-green-600",     icon: CheckCircle2 },
+  unpaid:  { label: "Unpaid",  color: "text-destructive",   icon: AlertCircle },
+  partial: { label: "Partial", color: "text-yellow-600",    icon: Clock },
+};
+
+function CustomerSummaryDialog({ customerId, onClose }: { customerId: number | null; onClose: () => void }) {
+  const { data: summary, isLoading, error } = useQuery<any>({
+    queryKey: ["customer-summary", customerId],
+    queryFn: () => authFetch(`/api/customers/${customerId}/summary`),
+    enabled: customerId !== null,
+    staleTime: 30_000,
+  });
+
+  return (
+    <Dialog open={customerId !== null} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BarChart2 className="w-4 h-4" />
+            {isLoading ? "Loading…" : summary?.name ?? "Customer Profile"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="space-y-3 mt-2">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+          </div>
+        ) : error ? (
+          <p className="text-sm text-destructive mt-2">Failed to load summary.</p>
+        ) : summary ? (
+          <div className="space-y-4 mt-1">
+            {/* Basic info */}
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              {summary.mobile && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{summary.mobile}</span>}
+              {summary.address && <span className="flex items-center gap-1 truncate max-w-[220px]"><MapPin className="w-3.5 h-3.5 flex-shrink-0" />{summary.address}</span>}
+              <span className="flex items-center gap-1"><CalendarDays className="w-3.5 h-3.5" />Since {format(new Date(summary.startDate), "MMM d, yyyy")}</span>
+              {summary.planName && <Badge variant="outline" className="text-xs">{summary.planName}</Badge>}
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: IndianRupee, label: "Total Billed",   value: `₹${summary.totalBilled.toLocaleString()}`,     color: "" },
+                { icon: CheckCircle2, label: "Total Paid",    value: `₹${summary.totalPaid.toLocaleString()}`,       color: "text-green-600" },
+                { icon: AlertCircle,  label: "Outstanding",   value: `₹${summary.outstandingAmount.toLocaleString()}`, color: summary.outstandingAmount > 0 ? "text-destructive" : "text-green-600" },
+                { icon: UtensilsCrossed, label: "Total Meals", value: summary.totalMealsConsumed,                    color: "" },
+                { icon: Receipt,      label: "Bills",         value: `${summary.totalBillsCount} total`,             color: "" },
+                { icon: Clock,        label: "Unpaid Bills",  value: summary.unpaidBillsCount,                       color: summary.unpaidBillsCount > 0 ? "text-destructive" : "" },
+              ].map(({ icon: Icon, label, value, color }) => (
+                <div key={label} className="rounded-lg border px-3 py-2.5 flex items-center gap-2.5">
+                  <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{label}</p>
+                    <p className={`text-sm font-semibold ${color}`}>{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {summary.lastPaymentDate && (
+              <p className="text-xs text-muted-foreground">
+                Last payment: <span className="font-medium text-foreground">₹{summary.lastPaymentAmount?.toLocaleString()}</span> on {format(new Date(summary.lastPaymentDate), "MMM d, yyyy")}
+              </p>
+            )}
+
+            {/* Monthly breakdown */}
+            {summary.monthlyBreakdown?.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Monthly Bills</p>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {summary.monthlyBreakdown.map((b: any) => {
+                      const { label: sLabel, color: sColor, icon: SIcon } = BILL_STATUS[b.status] ?? BILL_STATUS.unpaid;
+                      return (
+                        <div key={`${b.year}-${b.month}`} className="flex items-center justify-between text-sm rounded-md bg-muted/40 px-3 py-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground w-14">{MONTHS[b.month - 1]} {b.year}</span>
+                            <span className="text-xs text-muted-foreground">{b.mealsConsumed} meals</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">₹{b.totalAmount.toLocaleString()}</span>
+                            <span className={`text-xs flex items-center gap-0.5 ${sColor}`}><SIcon className="w-3 h-3" />{sLabel}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Recent payments */}
+            {summary.payments?.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Recent Payments</p>
+                  <div className="space-y-1.5">
+                    {summary.payments.slice(0, 5).map((p: any) => (
+                      <div key={p.id} className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{format(new Date(p.paymentDate), "MMM d, yyyy")}</span>
+                        <div className="flex items-center gap-2">
+                          {p.method && <Badge variant="outline" className="text-[10px]">{p.method}</Badge>}
+                          <span className="font-medium text-green-600">+ ₹{p.amount.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

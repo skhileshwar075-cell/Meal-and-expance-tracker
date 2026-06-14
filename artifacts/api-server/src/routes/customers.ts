@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { customersTable, mealPlansTable, attendanceTable, billsTable } from "@workspace/db";
+import { customersTable, mealPlansTable, attendanceTable, billsTable, paymentsTable } from "@workspace/db";
 import { eq, and, sql, desc, ilike } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
@@ -113,6 +113,61 @@ router.put("/customers/:id", requireAuth, requireRole("owner"), async (req, res)
     }).where(and(eq(customersTable.id, Number(req.params.id)), eq(customersTable.ownerId, req.user!.ownerId!), sql`${customersTable.deletedAt} IS NULL`)).returning();
     if (!row) { res.status(404).json({ error: "Customer not found" }); return; }
     res.json({ ...row, planName: null, totalBilled: Number(row.totalBilled), totalPaid: Number(row.totalPaid), outstandingAmount: Number(row.totalBilled) - Number(row.totalPaid) });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /customers/:id/summary
+router.get("/customers/:id/summary", requireAuth, requireRole("owner"), async (req, res) => {
+  try {
+    const ownerId = req.user!.ownerId!;
+    const custId = Number(req.params.id);
+    const [customer] = await db.select().from(customersTable).where(
+      and(eq(customersTable.id, custId), eq(customersTable.ownerId, ownerId), sql`${customersTable.deletedAt} IS NULL`)
+    );
+    if (!customer) { res.status(404).json({ error: "Customer not found" }); return; }
+
+    let planName: string | null = null;
+    if (customer.planId) {
+      const [plan] = await db.select().from(mealPlansTable).where(eq(mealPlansTable.id, customer.planId));
+      planName = plan?.name ?? null;
+    }
+
+    const bills = await db.select().from(billsTable).where(
+      and(eq(billsTable.customerId, custId), sql`${billsTable.deletedAt} IS NULL`)
+    );
+    const billsSorted = bills.sort((a, b) => (b.year * 100 + b.month) - (a.year * 100 + a.month));
+
+    const payments = await db.select().from(paymentsTable).where(eq(paymentsTable.customerId, custId));
+    const paymentsSorted = payments.sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+
+    const allAtt = await db.select().from(attendanceTable).where(eq(attendanceTable.customerId, custId));
+    const totalMealsConsumed = allAtt.reduce((s, a) => s + (a.morningPresent ? 1 : 0) + (a.eveningPresent ? 1 : 0), 0);
+
+    const unpaidBills = billsSorted.filter(b => b.status !== "paid");
+    const unpaidMeals = unpaidBills.reduce((s, b) => s + b.mealsConsumed, 0);
+    const lastPayment = paymentsSorted[0];
+
+    res.json({
+      id: customer.id, name: customer.name, mobile: customer.mobile, address: customer.address,
+      planName, startDate: customer.startDate, status: customer.status,
+      totalBilled: Number(customer.totalBilled), totalPaid: Number(customer.totalPaid),
+      outstandingAmount: Number(customer.totalBilled) - Number(customer.totalPaid),
+      totalMealsConsumed, unpaidMeals,
+      lastPaymentDate: lastPayment?.paymentDate ?? null,
+      lastPaymentAmount: lastPayment ? Number(lastPayment.amount) : null,
+      totalBillsCount: bills.length, unpaidBillsCount: unpaidBills.length,
+      payments: paymentsSorted.slice(0, 10).map(p => ({
+        id: p.id, amount: Number(p.amount), paymentDate: p.paymentDate, method: p.method, notes: p.notes,
+      })),
+      monthlyBreakdown: billsSorted.map(b => ({
+        month: b.month, year: b.year, mealsConsumed: b.mealsConsumed,
+        totalAmount: Number(b.totalAmount), paidAmount: Number(b.paidAmount),
+        status: b.status, discount: Number(b.discount),
+      })),
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

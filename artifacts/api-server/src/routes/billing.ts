@@ -133,6 +133,122 @@ router.post("/bills", requireAuth, requireRole("owner"), async (req, res) => {
   }
 });
 
+// GET /bills/preview?customerId=&month=&year=
+router.get("/bills/preview", requireAuth, requireRole("owner"), async (req, res) => {
+  const { customerId, month, year } = req.query;
+  if (!customerId || !month || !year) {
+    res.status(400).json({ error: "customerId, month, and year are required" });
+    return;
+  }
+  try {
+    const ownerId = req.user!.ownerId!;
+    const [customer] = await db.select().from(customersTable).where(
+      and(eq(customersTable.id, Number(customerId)), eq(customersTable.ownerId, ownerId))
+    );
+    if (!customer) { res.status(404).json({ error: "Customer not found" }); return; }
+
+    const m = String(month).padStart(2, "0");
+    const lastDay = new Date(Number(year), Number(month), 0).getDate();
+    const monthEnd = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
+    const attRecords = await db.select().from(attendanceTable).where(
+      and(eq(attendanceTable.customerId, Number(customerId)),
+        sql`date >= '${sql.raw(`${year}-${m}-01`)}' AND date <= '${sql.raw(monthEnd)}'`)
+    );
+    const mealsConsumed = attRecords.reduce((s, a) => s + (a.morningPresent ? 1 : 0) + (a.eveningPresent ? 1 : 0), 0);
+
+    let rate = 0;
+    let planName: string | null = null;
+    let billingType = "none";
+    if (customer.planId) {
+      const [plan] = await db.select().from(mealPlansTable).where(eq(mealPlansTable.id, customer.planId));
+      if (plan) {
+        planName = plan.name;
+        billingType = plan.billingType;
+        rate = plan.billingType === "per_meal" && plan.pricePerMeal
+          ? Number(plan.pricePerMeal)
+          : Number(plan.pricePerMonth) / (2 * lastDay);
+      }
+    } else {
+      rate = 50;
+      billingType = "per_meal";
+    }
+
+    res.json({
+      customerId: Number(customerId), customerName: customer.name,
+      month: Number(month), year: Number(year),
+      mealsConsumed, rate: Number(rate.toFixed(2)),
+      baseAmount: Number((rate * mealsConsumed).toFixed(2)),
+      planName, billingType, expectedMeals: 2 * lastDay,
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /bills/bulk
+router.post("/bills/bulk", requireAuth, requireRole("owner"), async (req, res) => {
+  const { month, year, discount, extraCharges } = req.body;
+  if (!month || !year) {
+    res.status(400).json({ error: "month and year are required" });
+    return;
+  }
+  try {
+    const ownerId = req.user!.ownerId!;
+    const customers = await db.select().from(customersTable).where(
+      and(eq(customersTable.ownerId, ownerId), eq(customersTable.status, "active"), sql`${customersTable.deletedAt} IS NULL`)
+    );
+    const m = String(month).padStart(2, "0");
+    const lastDay = new Date(Number(year), Number(month), 0).getDate();
+    const monthEnd = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
+    const disc = Number(discount ?? 0);
+    const extra = Number(extraCharges ?? 0);
+
+    const results = [];
+    const skipped = [];
+
+    for (const customer of customers) {
+      const existing = await db.select().from(billsTable).where(
+        and(eq(billsTable.customerId, customer.id), eq(billsTable.month, Number(month)),
+          eq(billsTable.year, Number(year)), sql`${billsTable.deletedAt} IS NULL`)
+      );
+      if (existing.length > 0) { skipped.push({ id: customer.id, name: customer.name, reason: "Bill already exists" }); continue; }
+
+      const attRecords = await db.select().from(attendanceTable).where(
+        and(eq(attendanceTable.customerId, customer.id),
+          sql`date >= '${sql.raw(`${year}-${m}-01`)}' AND date <= '${sql.raw(monthEnd)}'`)
+      );
+      const mealsConsumed = attRecords.reduce((s, a) => s + (a.morningPresent ? 1 : 0) + (a.eveningPresent ? 1 : 0), 0);
+
+      let rate = 0;
+      if (customer.planId) {
+        const [plan] = await db.select().from(mealPlansTable).where(eq(mealPlansTable.id, customer.planId));
+        if (plan) {
+          rate = plan.billingType === "per_meal" && plan.pricePerMeal
+            ? Number(plan.pricePerMeal)
+            : Number(plan.pricePerMonth) / (2 * lastDay);
+        }
+      } else {
+        rate = 50;
+      }
+
+      const totalAmount = Math.max(0, rate * mealsConsumed - disc + extra);
+      const [row] = await db.insert(billsTable).values({
+        customerId: customer.id, month: Number(month), year: Number(year), mealsConsumed,
+        rate: String(rate), discount: String(disc), extraCharges: String(extra),
+        totalAmount: String(totalAmount), status: "unpaid", paidAmount: "0",
+      }).returning();
+      await db.execute(sql`UPDATE customers SET total_billed = total_billed + ${totalAmount} WHERE id = ${customer.id}`);
+      results.push({ id: row.id, customerName: customer.name, mealsConsumed, totalAmount: Number(row.totalAmount) });
+    }
+
+    res.status(201).json({ generated: results.length, skipped: skipped.length, bills: results, skippedCustomers: skipped });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /bills/:id
 router.get("/bills/:id", requireAuth, async (req, res) => {
   try {
