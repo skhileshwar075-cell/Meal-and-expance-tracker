@@ -54,12 +54,12 @@ export default function Customers() {
 
   const addForm = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { name: "", mobile: "", address: "", planId: "", status: "active", startDate: new Date().toISOString().split("T")[0] },
+    defaultValues: { name: "", mobile: "", address: "", planId: "none", status: "active", startDate: new Date().toISOString().split("T")[0] },
   });
 
   const editForm = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { name: "", mobile: "", address: "", planId: "", status: "active", startDate: "" },
+    defaultValues: { name: "", mobile: "", address: "", planId: "none", status: "active", startDate: "" },
   });
 
   function openEdit(c: any) {
@@ -68,7 +68,7 @@ export default function Customers() {
       name: c.name,
       mobile: c.mobile ?? "",
       address: c.address ?? "",
-      planId: c.planId ? String(c.planId) : "",
+      planId: c.planId ? String(c.planId) : "none",
       status: c.status,
       startDate: c.startDate,
     });
@@ -92,7 +92,7 @@ export default function Customers() {
       name: data.name,
       mobile: data.mobile || undefined,
       address: data.address || undefined,
-      planId: data.planId ? Number(data.planId) : undefined,
+      planId: data.planId && data.planId !== "none" ? Number(data.planId) : undefined,
       startDate: data.startDate,
       status: data.status as CustomerInputStatus,
     };
@@ -322,12 +322,12 @@ function CustomerForm({ form, onSubmit, isPending, label, plans }: {
           <FormField control={form.control} name="planId" render={({ field }) => (
             <FormItem>
               <FormLabel>Meal Plan</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value ?? ""}>
+              <Select onValueChange={field.onChange} value={field.value ?? "none"}>
                 <FormControl>
                   <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">No plan</SelectItem>
+                  <SelectItem value="none">No plan</SelectItem>
                   {plans.filter(p => p.isActive).map(p => (
                     <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
                   ))}
