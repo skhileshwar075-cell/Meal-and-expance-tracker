@@ -88,22 +88,26 @@ router.post("/bills", requireAuth, requireRole("owner"), async (req, res) => {
     );
     const mealsConsumed = attRecords.reduce((s, a) => s + (a.morningPresent ? 1 : 0) + (a.eveningPresent ? 1 : 0), 0);
 
-    // Get rate from meal plan
+    // Get rate from meal plan and compute base amount from meals consumed only
     let rate = 0;
+    let baseAmount = 0;
     if (customer.planId) {
       const [plan] = await db.select().from(mealPlansTable).where(eq(mealPlansTable.id, customer.planId));
       if (plan) {
-        rate = plan.billingType === "per_meal" && plan.pricePerMeal
-          ? Number(plan.pricePerMeal)
-          : Number(plan.pricePerMonth) / Math.max(1, mealsConsumed || 60);
+        if (plan.billingType === "per_meal" && plan.pricePerMeal) {
+          // Charge the fixed per-meal price times meals consumed
+          rate = Number(plan.pricePerMeal);
+        } else {
+          // Monthly plan: derive a per-meal rate by spreading price over
+          // the expected 2 meals/day (morning + evening) for the full month
+          const expectedMeals = 2 * lastDayOfMonth;
+          rate = Number(plan.pricePerMonth) / expectedMeals;
+        }
       }
     } else {
-      rate = 50; // default per meal rate
+      rate = 50; // default per-meal rate when no plan assigned
     }
-
-    const baseAmount = customer.planId
-      ? (await db.select().from(mealPlansTable).where(eq(mealPlansTable.id, customer.planId!)).then(p => p[0]?.billingType === "monthly" ? Number(p[0].pricePerMonth) : rate * mealsConsumed))
-      : rate * mealsConsumed;
+    baseAmount = rate * mealsConsumed;
     const disc = Number(discount ?? 0);
     const extra = Number(extraCharges ?? 0);
     const totalAmount = Math.max(0, baseAmount - disc + extra);
