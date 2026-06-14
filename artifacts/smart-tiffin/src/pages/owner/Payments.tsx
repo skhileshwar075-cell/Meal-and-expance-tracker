@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   useListPayments, useRecordPayment, useListBills, useGetCollectionSummary,
   getListPaymentsQueryKey, getGetCollectionSummaryQueryKey, getListBillsQueryKey,
@@ -12,15 +12,18 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { IndianRupee, Plus, CreditCard } from "lucide-react";
+import { IndianRupee, Plus, CreditCard, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const now = new Date();
+const PAGE_SIZE = 10;
 
 export default function Payments() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState("all");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ billId: "", amount: "", status: "paid", paymentDate: now.toISOString().split("T")[0], notes: "" });
 
@@ -43,6 +46,15 @@ export default function Payments() {
       toast({ title: "Error", description: e?.message ?? "Failed to record payment", variant: "destructive" });
     }
   }
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return payments ?? [];
+    return (payments ?? []).filter(p => p.customerName.toLowerCase().includes(q));
+  }, [payments, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -105,22 +117,28 @@ export default function Payments() {
         </Card>
       )}
 
-      {/* Filter */}
-      <div className="flex gap-1">
-        {["all","paid","partial","unpaid"].map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filterStatus === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground border"}`}>
-            {s.charAt(0).toUpperCase() + s.slice(1)}
-          </button>
-        ))}
+      {/* Filter + Search */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex gap-1">
+          {["all","paid","partial","unpaid"].map(s => (
+            <button key={s} onClick={() => { setFilterStatus(s); setPage(1); }}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filterStatus === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground border"}`}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search customer…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-8" />
+        </div>
       </div>
 
       {/* Payments list */}
       {isLoading ? (
         <div className="space-y-2">{[1,2,3].map(i=><Skeleton key={i} className="h-16 w-full" />)}</div>
-      ) : payments && payments.length > 0 ? (
+      ) : filtered.length > 0 ? (
         <div className="space-y-2">
-          {payments.map(p => (
+          {paginated.map(p => (
             <Card key={p.id}>
               <CardContent className="py-3 px-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -144,9 +162,20 @@ export default function Payments() {
         <Card className="border-dashed">
           <CardContent className="py-12 text-center text-muted-foreground">
             <IndianRupee className="w-8 h-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No payment records found.</p>
+            <p className="text-sm">{search ? "No payments match your search." : "No payment records found."}</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>Page {page} of {totalPages} · {filtered.length} payments</span>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft className="w-4 h-4" /></Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight className="w-4 h-4" /></Button>
+          </div>
+        </div>
       )}
     </div>
   );

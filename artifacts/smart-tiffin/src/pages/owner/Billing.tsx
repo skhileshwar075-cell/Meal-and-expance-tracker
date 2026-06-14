@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   useListBills, useGenerateBill, useUpdateBill, useListCustomers,
   getListBillsQueryKey,
@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Plus, IndianRupee, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { FileText, Plus, IndianRupee, CheckCircle2, Clock, AlertCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const PAGE_SIZE = 10;
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
@@ -28,6 +30,8 @@ export default function Billing() {
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState(now.getFullYear());
   const [filterStatus, setFilterStatus] = useState("all");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [generateOpen, setGenerateOpen] = useState(false);
   const [editBill, setEditBill] = useState<any>(null);
 
@@ -76,6 +80,15 @@ export default function Billing() {
 
   const totalBilled = (bills ?? []).reduce((s, b) => s + b.totalAmount, 0);
   const totalCollected = (bills ?? []).reduce((s, b) => s + (b.paidAmount ?? 0), 0);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return bills ?? [];
+    return (bills ?? []).filter(b => b.customerName.toLowerCase().includes(q));
+  }, [bills, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -136,27 +149,31 @@ export default function Billing() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <select className="border rounded-md px-3 py-2 text-sm bg-background" value={filterMonth} onChange={e => setFilterMonth(Number(e.target.value))}>
+      <div className="flex gap-2 flex-wrap items-center">
+        <select className="border rounded-md px-3 py-2 text-sm bg-background" value={filterMonth} onChange={e => { setFilterMonth(Number(e.target.value)); setPage(1); }}>
           {MONTHS.map((m, i) => <option key={i} value={i+1}>{m}</option>)}
         </select>
-        <Input type="number" className="w-24" value={filterYear} onChange={e => setFilterYear(Number(e.target.value))} />
+        <Input type="number" className="w-24" value={filterYear} onChange={e => { setFilterYear(Number(e.target.value)); setPage(1); }} />
         <div className="flex gap-1">
           {["all","paid","unpaid","partial"].map(s => (
-            <button key={s} onClick={() => setFilterStatus(s)}
+            <button key={s} onClick={() => { setFilterStatus(s); setPage(1); }}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${filterStatus === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground border"}`}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
           ))}
+        </div>
+        <div className="relative flex-1 min-w-[160px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search customer…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-8" />
         </div>
       </div>
 
       {/* Bills list */}
       {isLoading ? (
         <div className="space-y-2">{[1,2,3,4].map(i=><Skeleton key={i} className="h-20 w-full" />)}</div>
-      ) : bills && bills.length > 0 ? (
+      ) : filtered.length > 0 ? (
         <div className="space-y-2">
-          {bills.map(bill => {
+          {paginated.map(bill => {
             const { label, color, icon: Icon } = STATUS_CONFIG[bill.status] ?? STATUS_CONFIG.unpaid;
             return (
               <Card key={bill.id} className="cursor-pointer hover:shadow-sm transition-shadow" onClick={() => { setEditBill(bill); setEditForm({ discount: bill.discount != null ? String(bill.discount) : "", extraCharges: bill.extraCharges != null ? String(bill.extraCharges) : "", notes: bill.notes ?? "", status: bill.status }); }}>
@@ -187,9 +204,20 @@ export default function Billing() {
         <Card className="border-dashed">
           <CardContent className="py-12 text-center text-muted-foreground">
             <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No bills for this period.</p>
+            <p className="text-sm">{search ? "No bills match your search." : "No bills for this period."}</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>Page {page} of {totalPages} · {filtered.length} bills</span>
+          <div className="flex gap-1">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}><ChevronLeft className="w-4 h-4" /></Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}><ChevronRight className="w-4 h-4" /></Button>
+          </div>
+        </div>
       )}
 
       {/* Edit bill dialog */}
