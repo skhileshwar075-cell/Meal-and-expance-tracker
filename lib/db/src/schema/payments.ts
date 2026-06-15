@@ -10,6 +10,7 @@ export const paymentsTable = pgTable("payments", {
   billId: integer("bill_id").notNull().references(() => billsTable.id, { onDelete: "cascade" }),
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("paid"),
+  method: varchar("method", { length: 30 }),
   paymentDate: date("payment_date"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

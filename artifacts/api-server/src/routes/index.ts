@@ -15,6 +15,7 @@ import paymentsRouter from "./payments";
 import ownerAnalyticsRouter from "./ownerAnalytics";
 import notificationsRouter from "./notifications";
 import connectionsRouter from "./connections";
+import remindersRouter from "./reminders";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(paymentsRouter);
 router.use(ownerAnalyticsRouter);
 router.use(notificationsRouter);
 router.use(connectionsRouter);
+router.use(remindersRouter);
 
 export default router;

@@ -40,6 +40,27 @@ Specific routes (e.g. `/expenses/summary`, `/budgets/current`) must be registere
 ## Seed script
 `pnpm --filter @workspace/scripts run seed` — idempotent (checks for existing data before inserting). Requires `drizzle-orm` and `pg` in scripts dependencies.
 
+## Payments schema: method field
+`paymentsTable` now has a nullable `method` varchar(30) column. Pushed to DB. Values: cash, upi, bank_transfer, cheque, other.
+
+## reminderLogs table
+`reminder_logs` table in DB tracks SMS/WhatsApp reminder sends (customerId, billId, mobile, channel, status, message, errorMessage, sentAt). Pushed to DB.
+
+## Reminders: Twilio env vars
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `TWILIO_CHANNEL` (sms/whatsapp)
+- If not configured → mock mode (logs to console, still logs to reminder_logs table with status=sent)
+- Routes: GET /reminders/config, /pending, /logs · POST /reminders/send/:billId, /send-all
+- `GET /reminders/config` returns `{ configured: bool, mock: bool }` — used by Billing.tsx to show "demo mode" notice
+
+## Payments: duplicate bill guard
+`POST /bills` checks for existing non-deleted bill (same customerId+month+year) and returns 409 with descriptive message before inserting.
+
+## Payments: reconcile endpoint
+`POST /payments/reconcile` recalculates all customer `totalBilled` and `totalPaid` from actual bill data. Returns `{ fixed, corrections }`.
+
+## Payments: transaction safety
+`POST /payments` wrapped in `db.transaction()`. Caps payment at remaining balance (can't overpay). Defaults `paymentDate` to today if not sent.
+
 ## Demo credentials
 - Student: arjun@example.com / password123
 - Owner: ramesh@tiffin.com / password123

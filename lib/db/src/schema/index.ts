@@ -12,3 +12,4 @@ export * from "./payments";
 export * from "./notifications";
 export * from "./connections";
 export * from "./analyticsSnapshots";
+export * from "./reminderLogs";

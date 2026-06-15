@@ -79,6 +79,17 @@ router.post("/bills", requireAuth, requireRole("owner"), async (req, res) => {
     );
     if (!customer) { res.status(404).json({ error: "Customer not found" }); return; }
 
+    // ── Duplicate guard ──────────────────────────────────────────────────────
+    const existing = await db.select({ id: billsTable.id }).from(billsTable).where(
+      and(eq(billsTable.customerId, customerId), eq(billsTable.month, Number(month)),
+        eq(billsTable.year, Number(year)), sql`${billsTable.deletedAt} IS NULL`)
+    );
+    if (existing.length > 0) {
+      res.status(409).json({ error: `A bill for ${customer.name} already exists for this month. Edit the existing bill instead.` });
+      return;
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     // Count attendance
     const m = String(month).padStart(2, "0");
     const lastDayOfMonth = new Date(Number(year), Number(month), 0).getDate();

@@ -3,16 +3,20 @@ import {
   useListBills, useGenerateBill, useUpdateBill, useListCustomers,
   getListBillsQueryKey,
 } from "@workspace/api-client-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Plus, CheckCircle2, Clock, AlertCircle, Search, ChevronLeft, ChevronRight, Layers, Eye, UtensilsCrossed } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  FileText, Plus, CheckCircle2, Clock, AlertCircle, Search,
+  ChevronLeft, ChevronRight, Layers, Eye, UtensilsCrossed,
+  BellRing, Send, Info,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const PAGE_SIZE = 10;
@@ -54,6 +58,7 @@ export default function Billing() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editBill, setEditBill] = useState<any>(null);
   const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [sendingReminder, setSendingReminder] = useState<number | null>(null);
 
   const [genForm, setGenForm] = useState({
     customerId: "", month: now.getMonth() + 1, year: now.getFullYear(), discount: "", extraCharges: "", notes: "",
@@ -66,7 +71,14 @@ export default function Billing() {
   const generateBill = useGenerateBill();
   const updateBill = useUpdateBill();
 
-  // Bill preview — auto-fetches when customer + month + year are all set
+  // Twilio/reminder config check
+  const { data: reminderConfig } = useQuery<{ configured: boolean; mock: boolean }>({
+    queryKey: ["reminder-config"],
+    queryFn: () => authFetch("/api/reminders/config"),
+    staleTime: 60_000,
+  });
+
+  // Bill preview
   const canPreview = Boolean(genForm.customerId && genForm.month && genForm.year);
   const { data: preview, isFetching: previewLoading } = useQuery<any>({
     queryKey: ["bill-preview", genForm.customerId, genForm.month, genForm.year],
@@ -106,7 +118,7 @@ export default function Billing() {
       });
       qc.invalidateQueries({ queryKey: getListBillsQueryKey() });
       toast({
-        title: `Bulk billing complete`,
+        title: "Bulk billing complete",
         description: `Generated ${result.generated} bill${result.generated !== 1 ? "s" : ""}${result.skipped > 0 ? `, skipped ${result.skipped} (already exist)` : ""}.`,
       });
       setBulkOpen(false);
@@ -114,6 +126,23 @@ export default function Billing() {
       toast({ title: "Bulk generation failed", description: e?.message, variant: "destructive" });
     } finally {
       setBulkGenerating(false);
+    }
+  }
+
+  async function handleSendReminder(billId: number, customerName: string) {
+    setSendingReminder(billId);
+    try {
+      const r = await authFetch(`/api/reminders/send/${billId}`, { method: "POST" });
+      toast({
+        title: r.mock ? "Reminder logged (demo)" : `Reminder sent via ${r.channel}`,
+        description: r.mock
+          ? `Would send to ${customerName}. Configure TWILIO_* env vars to send real messages.`
+          : `${customerName} has been notified on ${r.mobile}.`,
+      });
+    } catch (e: any) {
+      toast({ title: "Reminder failed", description: e?.message, variant: "destructive" });
+    } finally {
+      setSendingReminder(null);
     }
   }
 
@@ -147,6 +176,8 @@ export default function Billing() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const unpaidCount = (bills ?? []).filter(b => b.status !== "paid").length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -154,7 +185,7 @@ export default function Billing() {
           <h1 className="text-2xl font-bold tracking-tight">Billing</h1>
           <p className="text-muted-foreground text-sm mt-1">Generate and manage monthly bills</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button size="sm" variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
             <Layers className="w-4 h-4" />Generate All
           </Button>
@@ -205,25 +236,39 @@ export default function Billing() {
         <div className="space-y-2">
           {paginated.map(bill => {
             const { label, color, icon: Icon } = STATUS_CONFIG[bill.status] ?? STATUS_CONFIG.unpaid;
+            const isUnpaid = bill.status !== "paid";
             return (
-              <Card key={bill.id} className="cursor-pointer hover:shadow-sm transition-shadow"
-                onClick={() => { setEditBill(bill); setEditForm({ discount: bill.discount != null ? String(bill.discount) : "", extraCharges: bill.extraCharges != null ? String(bill.extraCharges) : "", notes: bill.notes ?? "", status: bill.status }); }}>
+              <Card key={bill.id} className="hover:shadow-sm transition-shadow">
                 <CardContent className="py-3 px-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium text-sm">{bill.customerName}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                      onClick={() => { setEditBill(bill); setEditForm({ discount: bill.discount != null ? String(bill.discount) : "", extraCharges: bill.extraCharges != null ? String(bill.extraCharges) : "", notes: bill.notes ?? "", status: bill.status }); }}>
+                      <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{bill.customerName}</p>
                         <p className="text-xs text-muted-foreground">{MONTHS[bill.month - 1]} {bill.year} · {bill.mealsConsumed} meals</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <div className="text-right">
                         <p className="font-semibold">₹{bill.totalAmount.toLocaleString()}</p>
                         {bill.status === "partial" && bill.paidAmount != null && <p className="text-xs text-muted-foreground">Paid: ₹{bill.paidAmount.toLocaleString()}</p>}
                         {bill.discount != null && bill.discount > 0 && <p className="text-xs text-green-600">-₹{bill.discount} disc</p>}
                       </div>
                       <Badge className={`${color} text-xs`}><Icon className="w-3 h-3 mr-1" />{label}</Badge>
+                      {isUnpaid && (
+                        <Button
+                          size="icon" variant="ghost"
+                          className="h-7 w-7 text-muted-foreground hover:text-blue-600 flex-shrink-0"
+                          title="Send payment reminder"
+                          disabled={sendingReminder === bill.id}
+                          onClick={() => handleSendReminder(bill.id, bill.customerName)}
+                        >
+                          {sendingReminder === bill.id
+                            ? <span className="animate-spin text-[10px]">⟳</span>
+                            : <BellRing className="w-3.5 h-3.5" />}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -251,7 +296,43 @@ export default function Billing() {
         </div>
       )}
 
-      {/* ── Generate Bill Dialog (with preview) ── */}
+      {/* Reminder status banner */}
+      {unpaidCount > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-sm">
+                <BellRing className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                <span className="text-blue-800 dark:text-blue-300">
+                  <strong>{unpaidCount}</strong> unpaid bill{unpaidCount !== 1 ? "s" : ""} in this period.
+                  {reminderConfig && !reminderConfig.configured && (
+                    <span className="text-xs text-muted-foreground ml-2">(Demo mode — set TWILIO_* env vars to send real SMS/WhatsApp)</span>
+                  )}
+                </span>
+              </div>
+              <Button
+                size="sm" variant="outline"
+                className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300"
+                onClick={async () => {
+                  try {
+                    const r = await authFetch("/api/reminders/send-all", { method: "POST" });
+                    toast({
+                      title: `Reminders sent`,
+                      description: `${r.sent} reminder${r.sent !== 1 ? "s" : ""} sent${r.failed > 0 ? `, ${r.failed} failed` : ""}.`,
+                    });
+                  } catch (e: any) {
+                    toast({ title: "Failed", description: e?.message, variant: "destructive" });
+                  }
+                }}
+              >
+                <Send className="w-3.5 h-3.5" />Send All Reminders
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Generate Bill Dialog ── */}
       <Dialog open={generateOpen} onOpenChange={v => { setGenerateOpen(v); if (!v) setGenForm({ customerId: "", month: now.getMonth() + 1, year: now.getFullYear(), discount: "", extraCharges: "", notes: "" }); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Generate Bill</DialogTitle></DialogHeader>
@@ -278,7 +359,7 @@ export default function Billing() {
               </div>
             </div>
 
-            {/* Preview panel */}
+            {/* Live preview panel */}
             {canPreview && (
               <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
@@ -294,7 +375,7 @@ export default function Billing() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Plan</span>
-                      <span className="font-medium">{preview.planName ?? "None (default ₹50/meal)"}</span>
+                      <span className="font-medium">{preview.planName ?? "None (₹50/meal)"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Rate</span>
@@ -341,7 +422,7 @@ export default function Billing() {
           <DialogHeader><DialogTitle>Generate Bills for All Customers</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
             <p className="text-sm text-muted-foreground">
-              Generates bills for all <strong>active</strong> customers for the selected month based on their actual attendance. Customers who already have a bill for the period will be skipped.
+              Generates bills for all <strong>active</strong> customers based on their actual attendance. Customers who already have a bill for the selected month are automatically skipped.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
