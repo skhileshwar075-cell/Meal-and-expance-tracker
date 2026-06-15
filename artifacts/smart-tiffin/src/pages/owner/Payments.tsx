@@ -57,12 +57,14 @@ export default function Payments() {
 
   const { data: payments, isLoading } = useListPayments({ status: filterStatus as any });
   const { data: summary } = useGetCollectionSummary({ month: now.getMonth() + 1, year: now.getFullYear() });
-  const { data: bills } = useListBills({ status: "unpaid" });
+  // Fetch ALL bills then filter to unpaid + partial for the dropdown
+  const { data: allBills } = useListBills({});
+  const pendingBills = (allBills ?? []).filter((b: any) => b.status === "unpaid" || b.status === "partial");
   const record = useRecordPayment();
 
   // Auto-fill amount with remaining balance when bill changes
   function handleBillChange(billId: string) {
-    const bill = (bills ?? []).find(b => String(b.id) === billId);
+    const bill = pendingBills.find(b => String(b.id) === billId);
     const remaining = bill ? bill.totalAmount - (bill.paidAmount ?? 0) : 0;
     setForm(f => ({ ...f, billId, amount: remaining > 0 ? String(remaining) : "" }));
   }
@@ -75,14 +77,15 @@ export default function Payments() {
           billId: Number(form.billId),
           amount: Number(form.amount),
           status: form.status as any,
+          method: (form.method as any) || undefined,
           paymentDate: form.paymentDate || undefined,
           notes: form.notes || undefined,
-        },
+        } as any,
       });
       qc.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
       qc.invalidateQueries({ queryKey: getGetCollectionSummaryQueryKey() });
       qc.invalidateQueries({ queryKey: getListBillsQueryKey() });
-      toast({ title: "Payment recorded" });
+      toast({ title: "Payment recorded", description: "Bill status updated automatically." });
       setOpen(false);
       setForm({ billId: "", amount: "", status: "paid", method: "", paymentDate: now.toISOString().split("T")[0], notes: "" });
     } catch (e: any) {
@@ -144,12 +147,14 @@ export default function Payments() {
                   <Label>Bill</Label>
                   <select required className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                     value={form.billId} onChange={e => handleBillChange(e.target.value)}>
-                    <option value="">Select unpaid bill…</option>
-                    {(bills ?? []).map(b => {
+                    <option value="">Select bill to pay…</option>
+                    {pendingBills.map(b => {
                       const remaining = b.totalAmount - (b.paidAmount ?? 0);
+                      const monthLabel = new Date(b.year, b.month - 1).toLocaleString("default", { month: "short", year: "numeric" });
+                      const statusLabel = b.status === "partial" ? " [partial]" : "";
                       return (
                         <option key={b.id} value={b.id}>
-                          {b.customerName} — ₹{remaining.toLocaleString()} due ({new Date(b.year, b.month - 1).toLocaleString("default", { month: "short", year: "numeric" })})
+                          {b.customerName}{statusLabel} — ₹{remaining.toLocaleString()} due ({monthLabel})
                         </option>
                       );
                     })}

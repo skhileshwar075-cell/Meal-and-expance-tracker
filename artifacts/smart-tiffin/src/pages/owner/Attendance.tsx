@@ -141,74 +141,96 @@ export default function Attendance() {
       {/* Date Selector + Mark Attendance */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarCheck className="w-4 h-4" />
-              {new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              {selectedDate === today && <Badge className="bg-primary/10 text-primary text-xs">Today</Badge>}
+          {/* Date title + nav — stack on mobile */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <CardTitle className="text-sm sm:text-base flex items-center gap-2 flex-wrap">
+              <CalendarCheck className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">
+                {new Date(selectedDate).toLocaleDateString("en-IN", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
+              </span>
+              {selectedDate === today && <Badge className="bg-primary/10 text-primary text-xs flex-shrink-0">Today</Badge>}
             </CardTitle>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => changeDate(-1)}><ChevronLeft className="h-4 w-4" /></Button>
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setSelectedDate(today)}>Today</Button>
               <Button variant="outline" size="icon" className="h-8 w-8" disabled={selectedDate >= today} onClick={() => changeDate(1)}><ChevronRight className="h-4 w-4" /></Button>
             </div>
           </div>
+          {/* Bulk-action buttons — wrap on mobile */}
           {selectedDate <= today && (
-            <div className="flex gap-2 mt-2">
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => markAll("morningPresent", true)}><Sunrise className="w-3 h-3 text-orange-500" />All Morning</Button>
-              <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => markAll("eveningPresent", true)}><Sunset className="w-3 h-3 text-blue-500" />All Evening</Button>
-              <Button variant="outline" size="sm" className="text-xs text-destructive" onClick={() => markAll("morningPresent", false)}>Clear Morning</Button>
-              <Button variant="outline" size="sm" className="text-xs text-destructive" onClick={() => markAll("eveningPresent", false)}>Clear Evening</Button>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => markAll("morningPresent", true)}>
+                <Sunrise className="w-3 h-3 text-orange-500" /><span className="hidden xs:inline">All </span>Morning
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs gap-1 h-7" onClick={() => markAll("eveningPresent", true)}>
+                <Sunset className="w-3 h-3 text-blue-500" /><span className="hidden xs:inline">All </span>Evening
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs text-destructive h-7" onClick={() => markAll("morningPresent", false)}>
+                Clear <span className="hidden sm:inline">Morning</span><Sunrise className="w-3 h-3 sm:hidden ml-0.5" />
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs text-destructive h-7" onClick={() => markAll("eveningPresent", false)}>
+                Clear <span className="hidden sm:inline">Evening</span><Sunset className="w-3 h-3 sm:hidden ml-0.5" />
+              </Button>
             </div>
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-2 sm:px-6">
           {loadingDate ? (
             <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
           ) : customers && customers.length > 0 ? (
             <div className="space-y-1">
-              {/* Header */}
-              <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-1 text-xs text-muted-foreground font-medium">
+              {/* Header row */}
+              <div className="grid grid-cols-[1fr_44px_44px] gap-2 px-2 py-1 text-xs text-muted-foreground font-medium">
                 <span>Customer</span>
-                <span className="flex items-center gap-1"><Sunrise className="w-3 h-3 text-orange-400" />Morning</span>
-                <span className="flex items-center gap-1"><Sunset className="w-3 h-3 text-blue-400" />Evening</span>
+                <span className="text-center flex items-center justify-center gap-0.5">
+                  <Sunrise className="w-3 h-3 text-orange-400" />
+                  <span className="hidden sm:inline">Morn</span>
+                </span>
+                <span className="text-center flex items-center justify-center gap-0.5">
+                  <Sunset className="w-3 h-3 text-blue-400" />
+                  <span className="hidden sm:inline">Eve</span>
+                </span>
               </div>
               {customers.map(c => {
                 const att = attMap.get(c.id);
                 return (
-                  <div key={c.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-center px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors group">
+                  <div key={c.id} className="grid grid-cols-[1fr_44px_44px] gap-2 items-center px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors group">
                     {/* Clickable customer name */}
-                    <div>
+                    <div className="min-w-0">
                       <button
-                        className="flex items-center gap-1.5 text-left group/name"
+                        className="flex items-center gap-1 text-left w-full group/name"
                         onClick={() => openCalendar({ id: c.id, name: c.name })}
                         title={`View ${c.name}'s meal calendar`}
                       >
-                        <span className="text-sm font-medium group-hover/name:text-primary group-hover/name:underline underline-offset-2 transition-colors">
+                        <span className="text-sm font-medium truncate group-hover/name:text-primary group-hover/name:underline underline-offset-2 transition-colors">
                           {c.name}
                         </span>
                         <CalendarDays className="w-3 h-3 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity flex-shrink-0" />
                       </button>
-                      {c.mobile && <p className="text-xs text-muted-foreground">{c.mobile}</p>}
+                      {c.mobile && <p className="text-xs text-muted-foreground truncate">{c.mobile}</p>}
                     </div>
 
                     {/* Morning toggle */}
-                    <button
-                      disabled={selectedDate > today}
-                      onClick={() => toggleCustomerAttendance(c.id, "morningPresent")}
-                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${att?.morningPresent ? "bg-orange-500 border-orange-500 text-white" : "border-muted-foreground/30 hover:border-orange-400"}`}
-                    >
-                      <Sunrise className="w-4 h-4" />
-                    </button>
+                    <div className="flex justify-center">
+                      <button
+                        disabled={selectedDate > today}
+                        onClick={() => toggleCustomerAttendance(c.id, "morningPresent")}
+                        className={`w-9 h-9 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 ${att?.morningPresent ? "bg-orange-500 border-orange-500 text-white" : "border-muted-foreground/30 hover:border-orange-400"}`}
+                      >
+                        <Sunrise className="w-4 h-4" />
+                      </button>
+                    </div>
 
                     {/* Evening toggle */}
-                    <button
-                      disabled={selectedDate > today}
-                      onClick={() => toggleCustomerAttendance(c.id, "eveningPresent")}
-                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${att?.eveningPresent ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/30 hover:border-blue-400"}`}
-                    >
-                      <Sunset className="w-4 h-4" />
-                    </button>
+                    <div className="flex justify-center">
+                      <button
+                        disabled={selectedDate > today}
+                        onClick={() => toggleCustomerAttendance(c.id, "eveningPresent")}
+                        className={`w-9 h-9 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 ${att?.eveningPresent ? "bg-blue-500 border-blue-500 text-white" : "border-muted-foreground/30 hover:border-blue-400"}`}
+                      >
+                        <Sunset className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
