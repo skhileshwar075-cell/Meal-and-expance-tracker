@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { attendanceTable, customersTable } from "@workspace/db";
+import { attendanceTable, customersTable, billsTable, paymentsTable } from "@workspace/db";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../middlewares/auth";
 
@@ -67,6 +67,81 @@ router.get("/attendance/forecast", requireAuth, requireRole("owner"), async (req
       morningConfidence: confidence,
       eveningConfidence: confidence,
       basedOnDays: Math.min(30, records.length),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /attendance/customer-month — day-wise breakdown + bill + payments for one customer
+router.get("/attendance/customer-month", requireAuth, requireRole("owner"), async (req, res) => {
+  const { customerId, month, year } = req.query;
+  if (!customerId || !month || !year) {
+    res.status(400).json({ error: "customerId, month, and year are required" });
+    return;
+  }
+  try {
+    const ownerId = req.user!.ownerId!;
+    const [customer] = await db.select().from(customersTable).where(
+      and(eq(customersTable.id, Number(customerId)), eq(customersTable.ownerId, ownerId))
+    );
+    if (!customer) { res.status(404).json({ error: "Customer not found" }); return; }
+
+    const m = String(month).padStart(2, "0");
+    const lastDay = new Date(Number(year), Number(month), 0).getDate();
+    const startDate = `${year}-${m}-01`;
+    const endDate   = `${year}-${m}-${String(lastDay).padStart(2, "0")}`;
+
+    const attendance = await db.select().from(attendanceTable).where(
+      and(
+        eq(attendanceTable.customerId, Number(customerId)),
+        gte(attendanceTable.date, startDate),
+        lte(attendanceTable.date, endDate)
+      )
+    );
+
+    // Bill for this customer + month + year
+    const bills = await db.select().from(billsTable).where(
+      and(
+        eq(billsTable.customerId, Number(customerId)),
+        eq(billsTable.month, Number(month)),
+        eq(billsTable.year, Number(year)),
+        sql`${billsTable.deletedAt} IS NULL`
+      )
+    );
+    const bill = bills[0] ?? null;
+
+    // Payments for this bill
+    const payments = bill
+      ? await db.select().from(paymentsTable).where(eq(paymentsTable.billId, bill.id))
+      : [];
+
+    res.json({
+      customer: { id: customer.id, name: customer.name, mobile: customer.mobile, planId: customer.planId },
+      month: Number(month),
+      year: Number(year),
+      daysInMonth: lastDay,
+      attendance: attendance.map(a => ({
+        date: a.date,
+        morningPresent: a.morningPresent,
+        eveningPresent: a.eveningPresent,
+        notes: a.notes,
+      })),
+      bill: bill ? {
+        id: bill.id, status: bill.status,
+        totalAmount: Number(bill.totalAmount),
+        paidAmount: Number(bill.paidAmount),
+        discount: Number(bill.discount),
+        extraCharges: Number(bill.extraCharges),
+        mealsConsumed: bill.mealsConsumed,
+        dueDate: bill.dueDate,
+      } : null,
+      payments: payments.map(p => ({
+        id: p.id, amount: Number(p.amount),
+        method: p.method, paymentDate: p.paymentDate,
+        status: p.status, notes: p.notes,
+      })),
     });
   } catch (err) {
     req.log.error(err);

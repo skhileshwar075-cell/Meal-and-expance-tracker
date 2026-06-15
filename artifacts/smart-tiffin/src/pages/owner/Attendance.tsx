@@ -13,13 +13,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sunrise, Sunset, Users, ChevronLeft, ChevronRight, CalendarCheck } from "lucide-react";
+import { Sunrise, Sunset, Users, ChevronLeft, ChevronRight, CalendarCheck, CalendarDays } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CustomerMealCalendarDialog from "@/components/owner/CustomerMealCalendarDialog";
 
 export default function Attendance() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+
+  // Calendar dialog state
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarCustomer, setCalendarCustomer] = useState<{ id: number; name: string } | null>(null);
 
   const { data: todayAtt, isLoading: loadingToday } = useGetTodayAttendance();
   const { data: forecast } = useGetMealForecast();
@@ -30,10 +35,20 @@ export default function Attendance() {
   const today = new Date().toISOString().split("T")[0];
   const attMap = new Map((dateAtt ?? []).map(a => [a.customerId, a]));
 
+  // Derive month/year from selectedDate for the calendar dialog
+  const selectedDateObj = new Date(selectedDate);
+  const selectedMonth = selectedDateObj.getMonth() + 1;
+  const selectedYear  = selectedDateObj.getFullYear();
+
   function changeDate(delta: number) {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + delta);
     setSelectedDate(d.toISOString().split("T")[0]);
+  }
+
+  function openCalendar(customer: { id: number; name: string }) {
+    setCalendarCustomer(customer);
+    setCalendarOpen(true);
   }
 
   async function toggleCustomerAttendance(customerId: number, field: "morningPresent" | "eveningPresent") {
@@ -73,7 +88,9 @@ export default function Attendance() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Attendance</h1>
-        <p className="text-muted-foreground text-sm mt-1">Mark daily meal attendance for your customers</p>
+        <p className="text-muted-foreground text-sm mt-1">
+          Mark daily meal attendance · <span className="text-primary font-medium">click a customer name</span> to view their monthly meal calendar
+        </p>
       </div>
 
       {/* Today's Summary + Forecast */}
@@ -147,7 +164,7 @@ export default function Attendance() {
         </CardHeader>
         <CardContent>
           {loadingDate ? (
-            <div className="space-y-2">{[1,2,3,4,5].map(i=><Skeleton key={i} className="h-14 w-full" />)}</div>
+            <div className="space-y-2">{[1,2,3,4,5].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
           ) : customers && customers.length > 0 ? (
             <div className="space-y-1">
               {/* Header */}
@@ -159,11 +176,23 @@ export default function Attendance() {
               {customers.map(c => {
                 const att = attMap.get(c.id);
                 return (
-                  <div key={c.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-center px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div key={c.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-center px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors group">
+                    {/* Clickable customer name */}
                     <div>
-                      <p className="text-sm font-medium">{c.name}</p>
+                      <button
+                        className="flex items-center gap-1.5 text-left group/name"
+                        onClick={() => openCalendar({ id: c.id, name: c.name })}
+                        title={`View ${c.name}'s meal calendar`}
+                      >
+                        <span className="text-sm font-medium group-hover/name:text-primary group-hover/name:underline underline-offset-2 transition-colors">
+                          {c.name}
+                        </span>
+                        <CalendarDays className="w-3 h-3 text-muted-foreground opacity-0 group-hover/name:opacity-100 transition-opacity flex-shrink-0" />
+                      </button>
                       {c.mobile && <p className="text-xs text-muted-foreground">{c.mobile}</p>}
                     </div>
+
+                    {/* Morning toggle */}
                     <button
                       disabled={selectedDate > today}
                       onClick={() => toggleCustomerAttendance(c.id, "morningPresent")}
@@ -171,6 +200,8 @@ export default function Attendance() {
                     >
                       <Sunrise className="w-4 h-4" />
                     </button>
+
+                    {/* Evening toggle */}
                     <button
                       disabled={selectedDate > today}
                       onClick={() => toggleCustomerAttendance(c.id, "eveningPresent")}
@@ -187,6 +218,18 @@ export default function Attendance() {
           )}
         </CardContent>
       </Card>
+
+      {/* Calendar dialog */}
+      {calendarCustomer && (
+        <CustomerMealCalendarDialog
+          open={calendarOpen}
+          onClose={() => { setCalendarOpen(false); setCalendarCustomer(null); }}
+          customerId={calendarCustomer.id}
+          customerName={calendarCustomer.name}
+          initialMonth={selectedMonth}
+          initialYear={selectedYear}
+        />
+      )}
     </div>
   );
 }
