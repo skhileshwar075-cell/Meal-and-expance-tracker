@@ -1,77 +1,88 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
-import { 
-  LayoutDashboard, 
-  Wallet, 
-  PieChart, 
-  Calendar, 
-  Settings, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Wallet,
+  PieChart,
+  Calendar,
+  Settings,
+  LogOut,
   Menu,
   Users,
   Utensils,
   Receipt,
   CreditCard,
-  Bell
+  Bell,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const STUDENT_NAV = [
-  { name: "Dashboard", href: "/student/dashboard", icon: LayoutDashboard },
-  { name: "Expenses", href: "/student/expenses", icon: Wallet },
-  { name: "Budgets", href: "/student/budgets", icon: PieChart },
-  { name: "Meals", href: "/student/meals", icon: Calendar },
-  { name: "Analytics", href: "/student/analytics", icon: Utensils },
+  { name: "Dashboard",  href: "/student/dashboard",  icon: LayoutDashboard },
+  { name: "Expenses",   href: "/student/expenses",   icon: Wallet },
+  { name: "Budgets",    href: "/student/budgets",    icon: PieChart },
+  { name: "Meals",      href: "/student/meals",      icon: Calendar },
+  { name: "Analytics",  href: "/student/analytics",  icon: Utensils },
   { name: "Connection", href: "/student/connection", icon: Users },
-  { name: "Settings", href: "/student/settings", icon: Settings },
+  { name: "Settings",   href: "/student/settings",   icon: Settings },
 ];
 
 const OWNER_NAV = [
-  { name: "Dashboard", href: "/owner/dashboard", icon: LayoutDashboard },
-  { name: "Customers", href: "/owner/customers", icon: Users },
+  { name: "Dashboard",  href: "/owner/dashboard",  icon: LayoutDashboard },
+  { name: "Customers",  href: "/owner/customers",  icon: Users },
   { name: "Attendance", href: "/owner/attendance", icon: Calendar },
   { name: "Meal Plans", href: "/owner/meal-plans", icon: Utensils },
-  { name: "Billing", href: "/owner/billing", icon: Receipt },
-  { name: "Payments", href: "/owner/payments", icon: CreditCard },
-  { name: "Analytics", href: "/owner/analytics", icon: PieChart },
-  { name: "Settings", href: "/owner/settings", icon: Settings },
+  { name: "Billing",    href: "/owner/billing",    icon: Receipt },
+  { name: "Payments",   href: "/owner/payments",   icon: CreditCard },
+  { name: "Analytics",  href: "/owner/analytics",  icon: PieChart },
+  { name: "Settings",   href: "/owner/settings",   icon: Settings },
 ];
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
   if (!user) return null;
 
   const navItems = user.role === "student" ? STUDENT_NAV : OWNER_NAV;
   const initials = user.name.slice(0, 2).toUpperCase();
+  const currentPage = navItems.find((item) => item.href === location)?.name || "Dashboard";
 
-  const NavLinks = () => (
+  const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
       {navItems.map((item) => {
         const isActive = location === item.href;
         return (
-          <Link 
-            key={item.name} 
+          <Link
+            key={item.name}
             href={item.href}
+            onClick={onClick}
             className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-              isActive 
-                ? "bg-primary text-primary-foreground font-medium" 
+              isActive
+                ? "bg-primary text-primary-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
-            <item.icon className="w-5 h-5" />
+            <item.icon className="w-5 h-5 shrink-0" />
             <span>{item.name}</span>
           </Link>
         );
@@ -79,16 +90,71 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     </>
   );
 
+  const CollapsedNavLinks = () => (
+    <TooltipProvider delayDuration={0}>
+      {navItems.map((item) => {
+        const isActive = location === item.href;
+        return (
+          <Tooltip key={item.name}>
+            <TooltipTrigger asChild>
+              <Link
+                href={item.href}
+                className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors mx-auto ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                <item.icon className="w-5 h-5 shrink-0" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {item.name}
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
+    </TooltipProvider>
+  );
+
   return (
     <div className="min-h-screen bg-background flex w-full">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 border-r bg-card h-screen sticky top-0">
-        <div className="p-4 border-b">
-          <div className="font-bold text-xl text-primary tracking-tight">SmartTiffin</div>
-          <div className="text-xs text-muted-foreground capitalize mt-1">{user.role} Portal</div>
+      <aside
+        className={`hidden md:flex flex-col border-r bg-card h-screen sticky top-0 transition-all duration-300 ease-in-out ${
+          collapsed ? "w-16" : "w-64"
+        }`}
+      >
+        {/* Sidebar header */}
+        <div
+          className={`h-14 border-b flex items-center shrink-0 ${
+            collapsed ? "justify-center px-0" : "px-4 gap-2"
+          }`}
+        >
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <div className="font-bold text-xl text-primary tracking-tight truncate">SmartTiffin</div>
+              <div className="text-xs text-muted-foreground capitalize">{user.role} Portal</div>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed((c) => !c)}
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="w-5 h-5" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5" />
+            )}
+          </Button>
         </div>
-        <div className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1">
-          <NavLinks />
+
+        {/* Nav links */}
+        <div className={`flex-1 overflow-y-auto py-4 flex flex-col gap-1 ${collapsed ? "px-3" : "px-3"}`}>
+          {collapsed ? <CollapsedNavLinks /> : <NavLinks />}
         </div>
       </aside>
 
@@ -96,6 +162,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Topbar */}
         <header className="h-14 border-b bg-card flex items-center justify-between px-4 sticky top-0 z-10">
           <div className="flex items-center gap-4">
+            {/* Mobile menu trigger */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
@@ -112,13 +179,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </SheetContent>
             </Sheet>
-            <h1 className="font-semibold text-lg truncate hidden sm:block">
-              {navItems.find(item => item.href === location)?.name || "Dashboard"}
-            </h1>
+
+            <h1 className="font-semibold text-lg truncate hidden sm:block">{currentPage}</h1>
           </div>
 
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-foreground relative"
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
             </Button>
@@ -127,7 +197,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">{initials}</AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -135,9 +207,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -151,9 +221,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-4 md:p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );
