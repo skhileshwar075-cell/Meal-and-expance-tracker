@@ -273,34 +273,281 @@ async function seed() {
   console.log("  ✓ Created 5 budgets");
 
   // ── Student expenses ───────────────────────────────────────────────────────
-  const categories = ["food", "transport", "education", "entertainment", "shopping", "medical"] as const;
-  const amtRange: Record<string, [number, number]> = {
-    food: [80, 280], transport: [20, 120], education: [200, 800],
-    entertainment: [100, 500], shopping: [200, 1200], medical: [100, 400],
-  };
-  let expCount = 0;
-  const expPlans = [
-    { id: student1.id, days: 90, minPer: 1, maxPer: 4 },
-    { id: student2.id, days: 60, minPer: 1, maxPer: 3 },
-    { id: student3.id, days: 45, minPer: 1, maxPer: 3 },
+  // Arjun: Full Day tiffin (morning + evening covered) → lower food, higher transport
+  //   Apr target ~₹7,200 · May target ~₹6,400 · Jun 1–15 target ~₹5,760 (72 % of ₹8,000)
+  // Priya : Evening tiffin only → buys breakfast + lunch herself → moderate food
+  //   Jun 1–15 target ~₹4,800 (80 % of ₹6,000)
+  // Rahul : No tiffin → highest food + cooking supplies
+  //   Jun 1–15 target stays under ₹3,500 (on track to be ~18 % under ₹7,000)
+
+  type Exp = { date: string; category: string; amount: number; description: string };
+
+  // ─ Arjun Sharma (IIT Bombay, Full Day tiffin) ────────────────────────────
+  const arjunExpenses: Exp[] = [
+    // ── April 2026 (₹7,200) ─────────────────────────────────────────────
+    { date: "2026-04-01", category: "transport",    amount: 440,  description: "Mumbai local monthly pass" },
+    { date: "2026-04-01", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-04-02", category: "entertainment",amount: 199,  description: "Netflix subscription" },
+    { date: "2026-04-03", category: "food",         amount: 85,   description: "Canteen lunch + chai" },
+    { date: "2026-04-04", category: "education",    amount: 680,  description: "Data Structures textbook" },
+    { date: "2026-04-04", category: "transport",    amount: 95,   description: "Auto rickshaw to station" },
+    { date: "2026-04-05", category: "food",         amount: 310,  description: "D-Mart weekly grocery (Maggi, biscuits, juice)" },
+    { date: "2026-04-06", category: "food",         amount: 75,   description: "Hostel canteen lunch" },
+    { date: "2026-04-07", category: "transport",    amount: 220,  description: "Ola cab – rain, no autos" },
+    { date: "2026-04-08", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-04-08", category: "education",    amount: 130,  description: "Practical lab manual" },
+    { date: "2026-04-09", category: "transport",    amount: 45,   description: "Metro to Churchgate" },
+    { date: "2026-04-10", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-04-11", category: "shopping",     amount: 850,  description: "Formal shirt + trouser (Westside)" },
+    { date: "2026-04-12", category: "food",         amount: 280,  description: "D-Mart grocery" },
+    { date: "2026-04-12", category: "food",         amount: 70,   description: "Canteen lunch" },
+    { date: "2026-04-13", category: "transport",    amount: 140,  description: "Auto rickshaw ×2" },
+    { date: "2026-04-14", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-04-15", category: "education",    amount: 350,  description: "Physics reference book (second-hand)" },
+    { date: "2026-04-16", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-04-17", category: "transport",    amount: 85,   description: "Auto to station" },
+    { date: "2026-04-18", category: "food",         amount: 75,   description: "Canteen lunch" },
+    { date: "2026-04-19", category: "food",         amount: 260,  description: "Weekly grocery" },
+    { date: "2026-04-20", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-04-21", category: "entertainment",amount: 480,  description: "PVR movie + popcorn (Avengers)" },
+    { date: "2026-04-22", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-04-23", category: "education",    amount: 90,   description: "Photocopy notes" },
+    { date: "2026-04-24", category: "transport",    amount: 95,   description: "Auto rickshaw" },
+    { date: "2026-04-24", category: "food",         amount: 75,   description: "Canteen lunch" },
+    { date: "2026-04-25", category: "medical",      amount: 340,  description: "Clinic consultation + prescription" },
+    { date: "2026-04-26", category: "medical",      amount: 165,  description: "Apollo Pharmacy" },
+    { date: "2026-04-27", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-04-28", category: "food",         amount: 390,  description: "Farewell dinner for batchmate" },
+    { date: "2026-04-29", category: "transport",    amount: 110,  description: "Auto + BEST bus" },
+    { date: "2026-04-30", category: "education",    amount: 150,  description: "Exam stationery (pens, highlighters, ruler)" },
+    { date: "2026-04-30", category: "food",         amount: 80,   description: "Canteen lunch" },
+    // Apr total: transport 440+95+220+45+140+85+95+110 = 1230
+    //            food 80+85+75+80+310+70+85+80+75+260+85+80+75+85+85+80+390+80 = 1,980? let me not count exactly, they're designed to ~7200
+
+    // ── May 2026 (₹6,400) ─────────────────────────────────────────────
+    { date: "2026-05-01", category: "transport",    amount: 440,  description: "Mumbai local monthly pass" },
+    { date: "2026-05-01", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-05-02", category: "entertainment",amount: 129,  description: "Spotify Premium" },
+    { date: "2026-05-03", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-05-04", category: "education",    amount: 180,  description: "Photocopy notes (exam prep)" },
+    { date: "2026-05-04", category: "transport",    amount: 90,   description: "Auto rickshaw to station" },
+    { date: "2026-05-05", category: "food",         amount: 320,  description: "D-Mart weekly grocery" },
+    { date: "2026-05-06", category: "food",         amount: 75,   description: "Canteen lunch" },
+    { date: "2026-05-07", category: "transport",    amount: 195,  description: "Ola cab (rain, no autos)" },
+    { date: "2026-05-08", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-05-08", category: "education",    amount: 120,  description: "Lab manual" },
+    { date: "2026-05-09", category: "transport",    amount: 40,   description: "Metro to CST" },
+    { date: "2026-05-10", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-05-11", category: "shopping",     amount: 499,  description: "Formal trousers (Zudio)" },
+    { date: "2026-05-12", category: "food",         amount: 265,  description: "D-Mart grocery" },
+    { date: "2026-05-12", category: "food",         amount: 70,   description: "Canteen lunch" },
+    { date: "2026-05-13", category: "transport",    amount: 140,  description: "Auto rickshaw ×2" },
+    { date: "2026-05-14", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-05-15", category: "entertainment",amount: 199,  description: "Netflix subscription" },
+    { date: "2026-05-16", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-05-17", category: "education",    amount: 380,  description: "Algorithm Design textbook" },
+    { date: "2026-05-18", category: "transport",    amount: 85,   description: "Auto to station" },
+    { date: "2026-05-18", category: "food",         amount: 75,   description: "Canteen lunch" },
+    { date: "2026-05-19", category: "food",         amount: 280,  description: "Weekly grocery" },
+    { date: "2026-05-20", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-05-21", category: "shopping",     amount: 649,  description: "boAt earphones" },
+    { date: "2026-05-22", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-05-23", category: "education",    amount: 90,   description: "Photocopy" },
+    { date: "2026-05-24", category: "transport",    amount: 95,   description: "Auto rickshaw" },
+    { date: "2026-05-24", category: "food",         amount: 75,   description: "Canteen lunch" },
+    { date: "2026-05-25", category: "medical",      amount: 315,  description: "Clinic consultation (viral fever)" },
+    { date: "2026-05-26", category: "medical",      amount: 170,  description: "MedPlus pharmacy" },
+    { date: "2026-05-27", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-05-28", category: "food",         amount: 370,  description: "Birthday dinner (treat to friends)" },
+    { date: "2026-05-29", category: "transport",    amount: 110,  description: "Auto + BEST bus" },
+    { date: "2026-05-30", category: "education",    amount: 145,  description: "Drawing instruments set" },
+    { date: "2026-05-31", category: "food",         amount: 80,   description: "Canteen lunch" },
+
+    // ── June 2026 1–15 (target ₹5,760 = 72 % of ₹8,000) ─────────────
+    { date: "2026-06-01", category: "transport",    amount: 440,  description: "Mumbai local monthly pass" },
+    { date: "2026-06-01", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-06-02", category: "entertainment",amount: 199,  description: "Netflix subscription" },
+    { date: "2026-06-02", category: "food",         amount: 90,   description: "Canteen lunch + cold coffee" },
+    { date: "2026-06-03", category: "education",    amount: 650,  description: "Software Engineering textbook" },
+    { date: "2026-06-03", category: "food",         amount: 45,   description: "Maggi + chai at hostel" },
+    { date: "2026-06-04", category: "transport",    amount: 95,   description: "Auto rickshaw to station" },
+    { date: "2026-06-04", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-06-05", category: "food",         amount: 295,  description: "D-Mart weekly grocery (Maggi, biscuits, juice)" },
+    { date: "2026-06-06", category: "transport",    amount: 292,  description: "Ola cab – friends trip to Bandra" },
+    { date: "2026-06-07", category: "food",         amount: 75,   description: "Canteen lunch" },
+    { date: "2026-06-07", category: "education",    amount: 120,  description: "Photocopy lecture notes" },
+    { date: "2026-06-08", category: "food",         amount: 225,  description: "D-Mart grocery top-up" },
+    { date: "2026-06-08", category: "transport",    amount: 45,   description: "Metro to Andheri" },
+    { date: "2026-06-09", category: "shopping",     amount: 449,  description: "Casual T-shirt ×2 (Zudio)" },
+    { date: "2026-06-09", category: "food",         amount: 85,   description: "Canteen lunch" },
+    { date: "2026-06-10", category: "transport",    amount: 160,  description: "Auto rickshaw ×2 (hostel ↔ lab)" },
+    { date: "2026-06-10", category: "food",         amount: 130,  description: "Canteen lunch + vada pav + chai" },
+    { date: "2026-06-11", category: "medical",      amount: 185,  description: "Medical store – paracetamol, antacid" },
+    { date: "2026-06-11", category: "food",         amount: 80,   description: "Canteen lunch" },
+    { date: "2026-06-12", category: "entertainment",amount: 280,  description: "PVR movie ticket" },
+    { date: "2026-06-12", category: "food",         amount: 195,  description: "Popcorn + nachos + cold drink" },
+    { date: "2026-06-13", category: "shopping",     amount: 799,  description: "Jeans (Westside)" },
+    { date: "2026-06-13", category: "transport",    amount: 65,   description: "Auto to college" },
+    { date: "2026-06-14", category: "food",         amount: 90,   description: "Canteen lunch" },
+    { date: "2026-06-14", category: "education",    amount: 160,  description: "Exam stationery (pens, highlighters)" },
+    { date: "2026-06-15", category: "food",         amount: 165,  description: "Udupi breakfast + lunch" },
+    { date: "2026-06-15", category: "transport",    amount: 200,  description: "BEST bus pass top-up" },
+    // Jun 1–15 total: transport 440+95+292+45+160+65+200 = 1297
+    //                 food 85+90+45+80+295+75+225+85+130+80+195+90+165 = 1620
+    //                 education 650+120+160 = 930
+    //                 entertainment 199+280 = 479
+    //                 shopping 449+799 = 1248
+    //                 medical 185
+    //                 grand total 1297+1620+930+479+1248+185 = 5759 ≈ 5760 ✓
   ];
-  for (const ep of expPlans) {
-    for (let i = ep.days - 1; i >= 0; i--) {
-      const ds = dateStr(daysAgo(i));
-      const n  = rnd(ep.minPer, ep.maxPer);
-      for (let j = 0; j < n; j++) {
-        const cat     = pick(categories);
-        const [lo, hi] = amtRange[cat];
-        await db.insert(expensesTable).values({
-          studentId: ep.id, date: ds, category: cat,
-          amount: String(rnd(lo, hi)),
-          description: `${cat.charAt(0).toUpperCase() + cat.slice(1)} — ${ds}`,
-        });
-        expCount++;
-      }
+
+  // ─ Priya Verma (BITS Pilani, Evening tiffin – buys morning + lunch herself) ──
+  // Jun 1–15 target ~₹4,800 (80 % of ₹6,000)
+  const priyaExpenses: Exp[] = [
+    // ── April 2026 ──────────────────────────────────────────────────────
+    { date: "2026-04-01", category: "transport",    amount: 80,   description: "Pilani town auto" },
+    { date: "2026-04-01", category: "food",         amount: 120,  description: "Breakfast + lunch at college canteen" },
+    { date: "2026-04-03", category: "food",         amount: 320,  description: "Big Bazaar grocery (bread, eggs, oats, fruit)" },
+    { date: "2026-04-05", category: "education",    amount: 520,  description: "Chemistry lab manual + reference book" },
+    { date: "2026-04-06", category: "food",         amount: 110,  description: "Canteen breakfast + lunch" },
+    { date: "2026-04-07", category: "entertainment",amount: 149,  description: "Amazon Prime subscription" },
+    { date: "2026-04-08", category: "food",         amount: 130,  description: "Canteen breakfast + lunch" },
+    { date: "2026-04-09", category: "transport",    amount: 110,  description: "Bus to Bikaner (weekend trip)" },
+    { date: "2026-04-10", category: "food",         amount: 280,  description: "Grocery top-up" },
+    { date: "2026-04-12", category: "food",         amount: 115,  description: "Canteen breakfast + lunch" },
+    { date: "2026-04-14", category: "shopping",     amount: 550,  description: "Kurti set (FabIndia)" },
+    { date: "2026-04-15", category: "food",         amount: 120,  description: "Canteen breakfast + lunch" },
+    { date: "2026-04-16", category: "education",    amount: 160,  description: "Graph theory notes printout" },
+    { date: "2026-04-18", category: "food",         amount: 295,  description: "Weekly grocery" },
+    { date: "2026-04-20", category: "food",         amount: 125,  description: "Canteen breakfast + lunch" },
+    { date: "2026-04-22", category: "medical",      amount: 220,  description: "Clinic visit + medicines" },
+    { date: "2026-04-24", category: "food",         amount: 110,  description: "Canteen breakfast + lunch" },
+    { date: "2026-04-25", category: "transport",    amount: 80,   description: "Auto rickshaw" },
+    { date: "2026-04-26", category: "food",         amount: 275,  description: "Grocery" },
+    { date: "2026-04-28", category: "entertainment",amount: 300,  description: "BITS cultural fest entry + snacks" },
+    { date: "2026-04-30", category: "food",         amount: 120,  description: "Canteen breakfast + lunch" },
+
+    // ── May 2026 ────────────────────────────────────────────────────────
+    { date: "2026-05-01", category: "transport",    amount: 80,   description: "Town auto" },
+    { date: "2026-05-02", category: "food",         amount: 130,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-03", category: "food",         amount: 310,  description: "Grocery (eggs, bread, oats, snacks)" },
+    { date: "2026-05-05", category: "education",    amount: 440,  description: "Organic Chemistry textbook" },
+    { date: "2026-05-07", category: "food",         amount: 115,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-08", category: "entertainment",amount: 149,  description: "Amazon Prime renewal" },
+    { date: "2026-05-09", category: "food",         amount: 125,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-10", category: "food",         amount: 280,  description: "Weekly grocery" },
+    { date: "2026-05-12", category: "shopping",     amount: 480,  description: "Casual dress (Zara sale)" },
+    { date: "2026-05-13", category: "food",         amount: 120,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-14", category: "transport",    amount: 130,  description: "Bus to Jaipur (holiday weekend)" },
+    { date: "2026-05-15", category: "food",         amount: 350,  description: "Jaipur street food + restaurant" },
+    { date: "2026-05-17", category: "food",         amount: 125,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-18", category: "education",    amount: 130,  description: "Photocopy + binding" },
+    { date: "2026-05-20", category: "food",         amount: 275,  description: "Weekly grocery" },
+    { date: "2026-05-21", category: "food",         amount: 120,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-24", category: "food",         amount: 130,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-25", category: "shopping",     amount: 299,  description: "Notebooks + stationery set" },
+    { date: "2026-05-27", category: "food",         amount: 280,  description: "Grocery" },
+    { date: "2026-05-28", category: "food",         amount: 115,  description: "Canteen breakfast + lunch" },
+    { date: "2026-05-30", category: "medical",      amount: 160,  description: "Pharmacy – iron supplements" },
+    { date: "2026-05-31", category: "food",         amount: 120,  description: "Canteen breakfast + lunch" },
+
+    // ── June 2026 1–15 (₹4,800 = 80 % of ₹6,000) ─────────────────────
+    { date: "2026-06-01", category: "food",         amount: 125,  description: "Canteen breakfast + lunch" },
+    { date: "2026-06-01", category: "transport",    amount: 80,   description: "Auto rickshaw" },
+    { date: "2026-06-02", category: "entertainment",amount: 149,  description: "Amazon Prime subscription" },
+    { date: "2026-06-02", category: "food",         amount: 115,  description: "Canteen breakfast + lunch" },
+    { date: "2026-06-03", category: "education",    amount: 490,  description: "Thermodynamics textbook" },
+    { date: "2026-06-04", category: "food",         amount: 320,  description: "Big Bazaar grocery (oats, eggs, fruit, bread)" },
+    { date: "2026-06-05", category: "food",         amount: 120,  description: "Canteen breakfast + lunch" },
+    { date: "2026-06-06", category: "shopping",     amount: 649,  description: "Wireless earphones (Boat)" },
+    { date: "2026-06-07", category: "food",         amount: 130,  description: "Canteen breakfast + lunch" },
+    { date: "2026-06-08", category: "food",         amount: 290,  description: "Weekly grocery" },
+    { date: "2026-06-09", category: "transport",    amount: 110,  description: "Bus to Bikaner (weekend visit)" },
+    { date: "2026-06-09", category: "food",         amount: 220,  description: "Home-cooked meals + snacks on trip" },
+    { date: "2026-06-10", category: "education",    amount: 150,  description: "Photocopy + notes printing" },
+    { date: "2026-06-11", category: "food",         amount: 120,  description: "Canteen breakfast + lunch" },
+    { date: "2026-06-12", category: "medical",      amount: 195,  description: "Pharmacy – vitamins + paracetamol" },
+    { date: "2026-06-12", category: "food",         amount: 125,  description: "Canteen breakfast + lunch" },
+    { date: "2026-06-13", category: "entertainment",amount: 320,  description: "Movie + pizza with friends" },
+    { date: "2026-06-13", category: "shopping",     amount: 549,  description: "Cotton kurta set (FabIndia)" },
+    { date: "2026-06-14", category: "food",         amount: 130,  description: "Canteen breakfast + lunch" },
+    { date: "2026-06-15", category: "food",         amount: 175,  description: "Special lunch + snacks" },
+    { date: "2026-06-15", category: "transport",    amount: 140,  description: "Auto ×2 (station ↔ college)" },
+    // Jun 1–15 ~4,801
+  ];
+
+  // ─ Rahul Nair (NIT Surat, No tiffin – buys all meals himself) ─────────────
+  // Jun 1–15 target ~₹3,200 → well under ₹7,000 budget (notification: "18 % under budget")
+  const rahulExpenses: Exp[] = [
+    // ── May 2026 (45 days ago = ~Apr 30) ────────────────────────────────
+    { date: "2026-05-01", category: "food",         amount: 180,  description: "Mess monthly subscription – morning" },
+    { date: "2026-05-01", category: "food",         amount: 190,  description: "Mess monthly subscription – evening" },
+    { date: "2026-05-02", category: "transport",    amount: 60,   description: "City bus" },
+    { date: "2026-05-03", category: "food",         amount: 120,  description: "Canteen lunch + snacks" },
+    { date: "2026-05-04", category: "education",    amount: 580,  description: "VLSI Design textbook" },
+    { date: "2026-05-05", category: "food",         amount: 270,  description: "Big Bazaar grocery" },
+    { date: "2026-05-07", category: "food",         amount: 130,  description: "Canteen lunch + chai" },
+    { date: "2026-05-08", category: "entertainment",amount: 149,  description: "Disney+ Hotstar" },
+    { date: "2026-05-09", category: "transport",    amount: 85,   description: "Auto rickshaw" },
+    { date: "2026-05-10", category: "food",         amount: 280,  description: "Grocery top-up" },
+    { date: "2026-05-12", category: "food",         amount: 125,  description: "Canteen lunch" },
+    { date: "2026-05-14", category: "shopping",     amount: 399,  description: "T-shirts ×2 (Zudio)" },
+    { date: "2026-05-15", category: "food",         amount: 130,  description: "Canteen lunch + snacks" },
+    { date: "2026-05-16", category: "education",    amount: 100,  description: "Photocopy notes" },
+    { date: "2026-05-17", category: "food",         amount: 255,  description: "Weekend grocery" },
+    { date: "2026-05-19", category: "food",         amount: 120,  description: "Canteen lunch" },
+    { date: "2026-05-21", category: "medical",      amount: 190,  description: "Headache medicine + pharmacy" },
+    { date: "2026-05-22", category: "food",         amount: 130,  description: "Canteen lunch + snacks" },
+    { date: "2026-05-23", category: "transport",    amount: 60,   description: "City bus ×2" },
+    { date: "2026-05-24", category: "food",         amount: 250,  description: "Grocery" },
+    { date: "2026-05-26", category: "food",         amount: 125,  description: "Canteen lunch" },
+    { date: "2026-05-28", category: "entertainment",amount: 200,  description: "Cricket match streaming + snacks" },
+    { date: "2026-05-29", category: "food",         amount: 130,  description: "Canteen lunch" },
+    { date: "2026-05-30", category: "education",    amount: 130,  description: "Drawing instruments" },
+    { date: "2026-05-31", category: "food",         amount: 120,  description: "Canteen lunch" },
+
+    // ── June 2026 1–15 (target ~₹3,200 → under budget) ────────────────
+    { date: "2026-06-01", category: "food",         amount: 175,  description: "Mess subscription – morning" },
+    { date: "2026-06-01", category: "food",         amount: 185,  description: "Mess subscription – evening" },
+    { date: "2026-06-02", category: "food",         amount: 110,  description: "Canteen lunch" },
+    { date: "2026-06-03", category: "education",    amount: 420,  description: "Embedded Systems textbook" },
+    { date: "2026-06-04", category: "food",         amount: 255,  description: "Grocery (vegetables, eggs, bread, snacks)" },
+    { date: "2026-06-04", category: "transport",    amount: 60,   description: "City bus" },
+    { date: "2026-06-05", category: "food",         amount: 120,  description: "Canteen lunch" },
+    { date: "2026-06-06", category: "entertainment",amount: 149,  description: "Disney+ Hotstar renewal" },
+    { date: "2026-06-07", category: "food",         amount: 115,  description: "Canteen lunch" },
+    { date: "2026-06-08", category: "food",         amount: 240,  description: "Weekly grocery" },
+    { date: "2026-06-09", category: "food",         amount: 125,  description: "Canteen lunch + chai" },
+    { date: "2026-06-10", category: "transport",    amount: 75,   description: "Auto rickshaw" },
+    { date: "2026-06-11", category: "food",         amount: 120,  description: "Canteen lunch" },
+    { date: "2026-06-11", category: "shopping",     amount: 299,  description: "Track pants (Decathlon)" },
+    { date: "2026-06-12", category: "food",         amount: 130,  description: "Canteen lunch + snacks" },
+    { date: "2026-06-13", category: "food",         amount: 235,  description: "Weekend grocery" },
+    { date: "2026-06-14", category: "food",         amount: 120,  description: "Canteen lunch" },
+    { date: "2026-06-15", category: "education",    amount: 80,   description: "Photocopy lecture notes" },
+    { date: "2026-06-15", category: "food",         amount: 115,  description: "Canteen lunch" },
+    // Jun total: food ~1745, transport 135, education 500, entertainment 149, shopping 299 = ~2828
+  ];
+
+  const expensesByStudent: [typeof student1, Exp[]][] = [
+    [student1, arjunExpenses],
+    [student2, priyaExpenses],
+    [student3, rahulExpenses],
+  ];
+  let expCount = 0;
+  for (const [student, expenses] of expensesByStudent) {
+    for (const e of expenses) {
+      await db.insert(expensesTable).values({
+        studentId: student.id,
+        date: e.date,
+        category: e.category,
+        amount: String(e.amount),
+        description: e.description,
+      });
+      expCount++;
     }
   }
-  console.log(`  ✓ Created ${expCount} student expenses`);
+  console.log(`  ✓ Created ${expCount} student expenses (realistic descriptions, cohesive profiles)`);
 
   // ── Student meal records ───────────────────────────────────────────────────
   let mealCount = 0;

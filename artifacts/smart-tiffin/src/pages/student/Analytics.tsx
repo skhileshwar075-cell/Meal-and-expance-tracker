@@ -122,44 +122,42 @@ function MonthPicker({
     else onChange(month + 1, year);
   }
 
-  // Build year options: current year and 2 past years
   const yearOptions = [year - 2, year - 1, year].filter(y => y >= 2024);
 
   return (
-    <div className="flex items-center gap-2">
-      <Button variant="outline" size="icon" className="h-8 w-8" onClick={prev}>
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={prev}>
         <ChevronLeft className="w-4 h-4" />
       </Button>
 
-      <div className="flex items-center gap-1.5">
-        <Select value={String(month)} onValueChange={v => onChange(Number(v), year)}>
-          <SelectTrigger className="h-8 w-32 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {MONTH_NAMES.map((name, i) => (
-              <SelectItem key={i + 1} value={String(i + 1)}>{name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={String(year)} onValueChange={v => onChange(month, Number(v))}>
-          <SelectTrigger className="h-8 w-20 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {yearOptions.map(y => (
-              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Select value={String(month)} onValueChange={v => onChange(Number(v), year)}>
+        <SelectTrigger className="h-8 w-[108px] text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {MONTH_NAMES.map((name, i) => (
+            <SelectItem key={i + 1} value={String(i + 1)}>{name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      <Button variant="outline" size="icon" className="h-8 w-8" onClick={next} disabled={isCurrentMonth}>
+      <Select value={String(year)} onValueChange={v => onChange(month, Number(v))}>
+        <SelectTrigger className="h-8 w-[72px] text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {yearOptions.map(y => (
+            <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" onClick={next} disabled={isCurrentMonth}>
         <ChevronRight className="w-4 h-4" />
       </Button>
 
       {!isCurrentMonth && (
-        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground"
+        <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground px-2 shrink-0"
           onClick={() => onChange(now.getMonth() + 1, now.getFullYear())}>
           Today
         </Button>
@@ -319,16 +317,16 @@ export default function Analytics() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="space-y-2">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Financial insights and spending patterns</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <MonthPicker month={month} year={year} onChange={(m, y) => { setMonth(m); setYear(y); }} />
           <Button
             variant="outline" size="sm"
-            className="h-8 gap-1.5 text-xs"
+            className="h-8 gap-1.5 text-xs shrink-0"
             onClick={() => exportCSV(summary, month, year)}
             disabled={!summary?.byCategory?.length}
           >
