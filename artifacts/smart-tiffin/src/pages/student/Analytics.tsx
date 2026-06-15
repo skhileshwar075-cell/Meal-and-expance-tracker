@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import {
   useGetSpendingTrend,
   useGetStudentScores,
@@ -304,11 +305,24 @@ export default function Analytics() {
   const [year, setYear] = useState(now.getFullYear());
   const [trendPeriod, setTrendPeriod] = useState<"daily" | "weekly" | "monthly">("monthly");
 
-  const { data: trend, isLoading: loadingTrend } = useGetSpendingTrend({ period: trendPeriod, months: 6 });
-  const { data: scores, isLoading: loadingScores } = useGetStudentScores();
-  const { data: insights } = useGetStudentInsights();
-  const { data: summary, isLoading: loadingSummary } = useGetExpenseSummary({ month, year });
-  const { data: patterns } = useGetExpensePatterns();
+  const qOpts = { query: { placeholderData: keepPreviousData, staleTime: 30_000 } };
+
+  const { data: trend, isLoading: loadingTrend } = useGetSpendingTrend({ period: trendPeriod, months: 6 }, qOpts);
+  const { data: scores, isLoading: loadingScores } = useGetStudentScores({ query: { staleTime: 60_000 } });
+  const { data: rawInsights } = useGetStudentInsights({ query: { staleTime: 60_000 } });
+  const { data: summary, isLoading: loadingSummary } = useGetExpenseSummary({ month, year }, qOpts);
+  const { data: patterns } = useGetExpensePatterns({ query: { staleTime: 60_000 } });
+
+  // Deduplicate insights by id to prevent duplicate alerts
+  const insights = useMemo(() => {
+    if (!rawInsights) return [];
+    const seen = new Set<string>();
+    return rawInsights.filter(ins => {
+      if (seen.has(ins.id)) return false;
+      seen.add(ins.id);
+      return true;
+    });
+  }, [rawInsights]);
 
   const isCurrentMonth = month === now.getMonth() + 1 && year === now.getFullYear();
   const monthLabel = `${MONTH_NAMES[month - 1]} ${year}`;
