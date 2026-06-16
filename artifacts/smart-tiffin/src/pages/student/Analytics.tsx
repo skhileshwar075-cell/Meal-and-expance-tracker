@@ -359,19 +359,33 @@ export default function Analytics() {
         </div>
       )}
 
-      {/* Insights */}
-      {insights && insights.length > 0 && (
-        <div className="space-y-2">
-          {insights.map(ins => (
-            <Alert key={ins.id} className={
-              ins.severity === "danger"  ? "border-destructive/50 bg-destructive/5" :
-              ins.severity === "warning" ? "border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20" :
-                                          "border-blue-500/50 bg-blue-50 dark:bg-blue-950/20"
-            }>
-              <Lightbulb className={`h-4 w-4 ${ins.severity === "danger" ? "text-destructive" : ins.severity === "warning" ? "text-yellow-600" : "text-blue-600"}`} />
-              <AlertDescription className="text-sm">{ins.message}</AlertDescription>
-            </Alert>
-          ))}
+      {/* Insights — `isolate` creates a new stacking context, preventing GPU compositing
+           bleed on Android Chrome where semi-transparent backgrounds can ghost */}
+      {insights.length > 0 && (
+        <div className="isolate space-y-2">
+          {insights.map(ins => {
+            const isWarn    = ins.severity === "warning";
+            const isDanger  = ins.severity === "danger";
+            return (
+              <div
+                key={`${ins.id}-${ins.message.slice(0, 30)}`}
+                className={[
+                  "flex items-start gap-3 px-3 py-2.5 rounded-lg border text-sm",
+                  isDanger ? "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950"
+                  : isWarn ? "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950"
+                           : "border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950",
+                ].join(" ")}
+              >
+                <Lightbulb className={[
+                  "w-4 h-4 mt-0.5 shrink-0",
+                  isDanger ? "text-red-500" : isWarn ? "text-yellow-500" : "text-blue-500",
+                ].join(" ")} />
+                <p className={isDanger ? "text-red-800 dark:text-red-200" : isWarn ? "text-yellow-800 dark:text-yellow-200" : "text-blue-800 dark:text-blue-200"}>
+                  {ins.message}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
 

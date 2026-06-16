@@ -178,7 +178,18 @@ router.get("/analytics/student/insights", requireAuth, requireRole("student"), a
       insights.push({ id: "saving-well", type: "saving_tip", message: "Great job! You are well under budget this month. Consider saving the surplus.", severity: "info", category: null });
     }
 
-    res.json(insights.slice(0, 5));
+    // Deduplicate by both id and message before returning
+    const seenIds = new Set<string>();
+    const seenMessages = new Set<string>();
+    const uniqueInsights = insights.filter(ins => {
+      const msgKey = ins.message.trim().toLowerCase();
+      if (seenIds.has(ins.id) || seenMessages.has(msgKey)) return false;
+      seenIds.add(ins.id);
+      seenMessages.add(msgKey);
+      return true;
+    });
+
+    res.json(uniqueInsights.slice(0, 5));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

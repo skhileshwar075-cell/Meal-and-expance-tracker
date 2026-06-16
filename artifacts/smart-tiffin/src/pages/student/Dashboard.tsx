@@ -88,17 +88,21 @@ export default function StudentDashboard() {
   const { data: dash, isLoading } = useGetStudentDashboard();
   const { data: meals } = useGetMealSummary({ month, year });
   const { data: summary } = useGetExpenseSummary({ month, year });
-  const { data: insights } = useGetStudentInsights();
+  // Match staleTime with Analytics.tsx so both share the same cache options
+  const { data: rawInsights } = useGetStudentInsights({ query: { staleTime: 60_000 } });
 
   const uniqueInsights = useMemo(() => {
-    if (!insights) return [];
-    const seen = new Set<string>();
-    return insights.filter(ins => {
-      if (seen.has(ins.id)) return false;
-      seen.add(ins.id);
+    if (!rawInsights) return [];
+    const seenIds = new Set<string>();
+    const seenMessages = new Set<string>();
+    return rawInsights.filter(ins => {
+      const msgKey = ins.message.trim().toLowerCase();
+      if (seenIds.has(ins.id) || seenMessages.has(msgKey)) return false;
+      seenIds.add(ins.id);
+      seenMessages.add(msgKey);
       return true;
     });
-  }, [insights]);
+  }, [rawInsights]);
 
   const budgetPct = dash && dash.monthlyBudget > 0
     ? Math.min(100, Math.round((dash.amountSpent / dash.monthlyBudget) * 100))
