@@ -4,60 +4,75 @@ A production-ready dual-role SaaS web app for students to track expenses, budget
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port from $PORT, default 5000)
-- `pnpm --filter @workspace/smart-tiffin run dev` — run the frontend (port from $PORT)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/scripts run seed` — seed demo data
-- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — JWT signing secret
+```bash
+bash start.sh                                                        # start both services
+PORT=8080 pnpm --filter @workspace/backend run dev                  # backend only
+PORT=8081 BASE_PATH=/ pnpm --filter @workspace/frontend run dev     # frontend only
+pnpm run typecheck                                                   # full typecheck
+pnpm run build                                                       # typecheck + build all
+pnpm --filter @workspace/db run push                                 # push DB schema (dev)
+pnpm --filter @workspace/db run push-force                           # force push schema
+pnpm --filter @workspace/scripts run seed                            # seed demo data
+```
+
+Required env vars: `DATABASE_URL` (Postgres connection string), `JWT_SECRET` (JWT signing secret).
+
+## Startup
+
+The app is launched via `bash start.sh` which:
+1. Kills any stale processes on ports 8080 and 8081
+2. Starts `@workspace/backend` on port 8080 (`PORT=8080`)
+3. Starts `@workspace/frontend` on port 8081 (`PORT=8081 BASE_PATH=/`)
+4. Forwards SIGTERM to both on stop
+
+Replit runs each service as a separate artifact workflow:
+- `artifacts/backend: API Server` — port 8080
+- `artifacts/frontend: web` — port 8081
+- `artifacts/mockup-sandbox: Component Preview Server` — port 8082 (canvas design tool)
 
 ## Demo Credentials (after seed)
 
 - **Student:** arjun@example.com / password123
+- **Student:** priya@example.com / password123
 - **Owner:** ramesh@tiffin.com / password123
-- **Tiffin invite code:** PATEL1 (use in student Connection page to link to owner's service)
+- **Tiffin invite code:** PATEL1 (enter in student Connection page to link to owner's service)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- Frontend: React + Vite + Tailwind CSS + ShadCN UI + Recharts
+- Frontend: React 19 + Vite 7 + Tailwind CSS 4 + ShadCN UI + Recharts + Wouter
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- Auth: JWT (access 15min, refresh 7d), stored in localStorage
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- DB: PostgreSQL 16 + Drizzle ORM
+- Validation: Zod, drizzle-zod
+- Auth: JWT (access 15 min, refresh 7 days), stored in localStorage
+- API contracts: OpenAPI spec in `lib/api-spec/`, Orval generates hooks + Zod schemas
 
 ## Where things live
 
-- `artifacts/smart-tiffin/` — React+Vite frontend
+- `artifacts/frontend/` — React+Vite frontend
   - `src/pages/student/` — Dashboard, Expenses, Budgets, Meals, Analytics, Connection, Settings
   - `src/pages/owner/` — Dashboard, Customers, Attendance, MealPlans, Billing, Payments, Analytics, Settings
   - `src/components/layout/DashboardLayout.tsx` — sidebar/topbar shell with role-aware nav
   - `src/lib/auth.tsx` — AuthContext, JWT token management
   - `src/lib/api-client.ts` — wires auth token getter into generated fetch client
-- `artifacts/api-server/` — Express 5 API server
-  - `src/routes/` — one file per domain (auth, students, expenses, budgets, meals, owners, customers, mealPlans, attendance, billing, payments, studentAnalytics, ownerAnalytics, notifications, connections)
+- `artifacts/backend/` — Express 5 API server
+  - `src/routes/` — auth, students, expenses, budgets, meals, owners, customers, mealPlans, attendance, billing, payments, studentAnalytics, ownerAnalytics, notifications, connections, reminders
   - `src/middleware/auth.ts` — JWT verify middleware, requireRole helper
-- `lib/db/` — Drizzle ORM schema (13 table files) + migrations
+- `lib/db/` — Drizzle ORM schema + push config
 - `lib/api-client-react/` — Orval-generated React Query hooks
 - `lib/api-zod/` — Orval-generated Zod schemas
-- `scripts/src/seed.ts` — database seed with realistic demo data
+- `lib/api-spec/openapi.yaml` — OpenAPI spec (source of truth)
+- `scripts/src/seed.ts` — idempotent demo data seeder
 
 ## Architecture decisions
 
-- **Contract-first API:** OpenAPI spec in `artifacts/api-spec/` drives both frontend hooks (Orval) and backend validation (Zod schemas from `drizzle-zod`). No hand-written fetch code.
-- **Dual-role auth:** Single JWT payload carries `role` + `studentId`/`ownerId`. Route middleware enforces role boundaries.
-- **Drizzle numeric fields return strings** — all route handlers convert with `Number()` before arithmetic.
-- **Route ordering:** specific routes (e.g. `/expenses/summary`, `/budgets/current`) registered BEFORE parameterized routes (`:id`) in each route file to prevent false matches.
-- **`lib/api-client-react/custom-fetch`** exported via `package.json` `exports` field — required by `src/lib/api-client.ts` to inject auth headers.
-
-## Product
-
-- **Student role:** track daily expenses by category, set monthly/weekly budgets with alert thresholds, log morning/evening meals on a calendar, view AI-style financial insights, connect to a tiffin service via invite code, see bills and payment status.
-- **Owner role:** manage customers and meal plans, mark daily attendance (morning/evening) with bulk-mark shortcuts, generate monthly bills with discounts/extra charges, record payments, view revenue trends, retention rates, churn risk, and top customers.
+- **Dual-role auth:** Single JWT carries `role` + `studentId`/`ownerId`. Route middleware enforces role boundaries.
+- **Drizzle numeric fields return strings** — all route handlers must `Number()` before arithmetic.
+- **Route ordering:** specific routes (`/expenses/summary`, `/budgets/current`) registered BEFORE parameterized routes (`:id`).
+- **`collectionRate`** — backend returns 0–100 (already ×100). Never multiply again on the frontend.
+- **Payments transaction safety** — `POST /payments` runs inside `db.transaction()`, caps at remaining balance.
+- **Duplicate bill guard** — `POST /bills` returns 409 for duplicate customer+month+year.
+- **Reminders mock mode** — if Twilio env vars absent, logs to console + `reminder_logs` table, no real send.
 
 ## User preferences
 
@@ -65,14 +80,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-- **Do not run `pnpm dev` at workspace root** — individual artifacts need env vars from workflow config.
-- Verify artifacts with `pnpm --filter @workspace/<slug> run typecheck`, not `build`.
-- `useToast` import path: `@/hooks/use-toast` (not `@/components/ui/use-toast`).
-- Generated hooks take params as **first argument directly**: `useListExpenses({ month, year })` — NOT wrapped in `{ query: { params: ... } }`.
-- After any schema or route change, run `pnpm --filter @workspace/api-spec run codegen` to regenerate hooks.
-- `@workspace/api-client-react/custom-fetch` subpath export must be listed in `lib/api-client-react/package.json` exports.
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
-- OpenAPI spec: `artifacts/api-spec/openapi.yaml`
+- **PostgreSQL DATE type** — compute last day with `new Date(year, month, 0).getDate()`. Hardcoding `31` causes 500s for short months.
+- **`useToast` import:** `@/hooks/use-toast` — not `@/components/ui/use-toast`.
+- **Orval hook signatures:** params as first arg directly — `useListExpenses({ month, year })` not `{ query: { params: ... } }`.
+- **`@workspace/api-client-react/custom-fetch`** subpath must be listed in `lib/api-client-react/package.json` exports.
+- **`pnpm --filter db push`** is wrong — correct command is `pnpm --filter @workspace/db run push`.
