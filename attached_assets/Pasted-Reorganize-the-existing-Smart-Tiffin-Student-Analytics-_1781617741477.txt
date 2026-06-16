@@ -1,0 +1,189 @@
+Reorganize the existing Smart Tiffin & Student Analytics Platform without changing any functionality.
+
+This is a full-stack SaaS application that supports two independent user roles:
+
+- Student
+- Tiffin Service Owner
+
+The application includes authentication, dashboards, expense tracking, budget management, meal tracking, customer management, billing, payment tracking, analytics, and reporting features.
+
+---
+
+TARGET PROJECT STRUCTURE
+
+frontend/
+src/
+components/
+pages/
+services/
+hooks/
+context/
+utils/
+types/
+assets/
+
+public/
+
+backend/
+src/
+controllers/
+routes/
+middleware/
+services/
+utils/
+config/
+prisma/
+
+app.ts
+server.ts
+
+docs/
+
+README.md
+
+---
+
+REORGANIZATION REQUIREMENTS
+
+Move all React, TypeScript, Vite, TailwindCSS, ShadCN UI, dashboard, chart, and frontend-related code into:
+
+frontend/src
+
+Move all Express, Node.js, Prisma, API, authentication, middleware, controller, and backend-related code into:
+
+backend/src
+
+Maintain a simple architecture:
+
+Route → Controller → Service → Database
+
+Do NOT introduce complex architecture patterns such as:
+
+- Domain Layer
+- Repository Pattern
+- Infrastructure Layer
+- Use Cases
+- Adapters
+- CQRS
+
+---
+
+PRESERVE ALL EXISTING FEATURES
+
+Do not modify business logic.
+
+Keep all existing functionality working, including:
+
+Authentication
+
+- Register
+- Login
+- Logout
+- JWT
+- Refresh Tokens
+
+Student Features
+
+- Profile Management
+- Expense Tracking
+- Budget Management
+- Meal Tracking
+- Analytics Dashboard
+- Reports
+
+Tiffin Owner Features
+
+- Business Profile
+- Customer Management
+- Meal Attendance
+- Billing
+- Payment Tracking
+- Revenue Analytics
+
+Shared Features
+
+- Role-Based Access Control
+- Dashboard UI
+- Notifications
+- Database Integration
+- API Endpoints
+
+---
+
+UPDATE REQUIRED FILES
+
+Update all:
+
+- Import paths
+- Export paths
+- package.json scripts
+- tsconfig.json
+- vite.config.ts
+- Prisma configuration
+- Environment variables
+- API URLs
+- Build scripts
+- Deployment configuration
+
+---
+
+SAFE MIGRATION PROCESS
+
+Before making any changes:
+
+Generate a detailed migration plan containing:
+
+1. Current project structure analysis
+2. Proposed project structure
+3. Files and folders to move
+4. Import path changes
+5. Configuration files requiring updates
+6. Potential risks
+7. Rollback strategy
+8. Verification checklist
+
+Do NOT delete, overwrite, or modify existing code until the new structure has been verified working.
+
+Maintain a backup-safe migration process.
+
+---
+
+POST-MIGRATION VALIDATION
+
+Verify:
+
+- Application builds successfully
+- Frontend runs successfully
+- Backend runs successfully
+- Authentication works
+- Database connections work
+- API endpoints work
+- Dashboards load correctly
+- Analytics pages function correctly
+- Routing functions correctly
+
+---
+
+AFTER REORGANIZATION PROVIDE
+
+1. Complete new folder tree
+
+2. Updated package.json files
+
+3. Updated run commands
+
+4. Updated build commands
+
+5. Updated development workflow
+
+6. Updated environment variable locations
+
+7. Updated deployment instructions
+
+8. Verification results
+
+9. Rollback plan
+
+10. Recommended next steps
+
+Do not create new functionality. Focus only on restructuring, cleanup, maintainability, and preserving existing behavior.
