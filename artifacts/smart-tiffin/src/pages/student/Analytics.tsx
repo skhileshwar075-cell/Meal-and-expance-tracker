@@ -313,13 +313,14 @@ export default function Analytics() {
   const { data: summary, isLoading: loadingSummary } = useGetExpenseSummary({ month, year }, qOpts);
   const { data: patterns } = useGetExpensePatterns({ query: { staleTime: 60_000 } });
 
-  // Deduplicate insights by id to prevent duplicate alerts
+  // Deduplicate insights by message content (IDs may differ for identical messages)
   const insights = useMemo(() => {
     if (!rawInsights) return [];
     const seen = new Set<string>();
     return rawInsights.filter(ins => {
-      if (seen.has(ins.id)) return false;
-      seen.add(ins.id);
+      const key = ins.message.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
   }, [rawInsights]);
@@ -331,16 +332,15 @@ export default function Analytics() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
-      <div className="space-y-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Financial insights and spending patterns</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <MonthPicker month={month} year={year} onChange={(m, y) => { setMonth(m); setYear(y); }} />
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">Financial insights and spending patterns</p>
+          </div>
           <Button
             variant="outline" size="sm"
-            className="h-8 gap-1.5 text-xs shrink-0"
+            className="h-8 gap-1.5 text-xs shrink-0 mt-1"
             onClick={() => exportCSV(summary, month, year)}
             disabled={!summary?.byCategory?.length}
           >
@@ -348,6 +348,7 @@ export default function Analytics() {
             Export CSV
           </Button>
         </div>
+        <MonthPicker month={month} year={year} onChange={(m, y) => { setMonth(m); setYear(y); }} />
       </div>
 
       {/* Past month badge */}
