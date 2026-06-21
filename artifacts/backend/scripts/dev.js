@@ -7,11 +7,20 @@ const env = {
 };
 
 const pnpmPath = process.env.npm_execpath || "pnpm";
-const command = `${pnpmPath} exec -- tsx src/index.ts`;
-const child = spawn(command, {
+let execPath = pnpmPath;
+let execArgs = ["exec", "--", "tsx", "src/index.ts"];
+
+// If npm_execpath points to a JS file (e.g. npm-cli.js or pnpm.mjs), run it via Node
+if (pnpmPath.endsWith(".js") || pnpmPath.endsWith(".mjs")) {
+  execPath = process.execPath;
+  execArgs = [pnpmPath, "exec", "--", "tsx", "src/index.ts"];
+}
+
+console.log(`Starting backend dev server: ${execPath} ${execArgs.join(" ")}`);
+const child = spawn(execPath, execArgs, {
   env,
   stdio: "inherit",
-  shell: true,
+  shell: false,
 });
 
 const forwardSignal = (signal) => {
