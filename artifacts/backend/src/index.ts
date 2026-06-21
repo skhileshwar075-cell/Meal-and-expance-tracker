@@ -1,5 +1,11 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import { config } from "dotenv";
+
+if (process.env.NODE_ENV !== "production") {
+  config();
+}
+
+const { default: app } = await import("./app");
+const { logger } = await import("./lib/logger");
 
 const rawPort = process.env["PORT"];
 
