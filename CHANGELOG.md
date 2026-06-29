@@ -162,9 +162,7 @@ Smart Tiffin Platform is now live! A complete solution for students to manage me
 - ✅ PROJECT_DOCUMENTATION.md - Technical deep dive
 - ✅ SETUP.md - Installation guide
 - ✅ DEPLOYMENT.md - Production guide
-- ✅ CONTRIBUTING.md - Contributor guidelines
 - ✅ CHANGELOG.md - Version history
-- ✅ LICENSE - MIT License
 
 ### Known Limitations
 

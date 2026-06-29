@@ -110,7 +110,7 @@ export default function OwnerDashboard() {
   }
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="space-y-5 max-w-3xl lg:max-w-6xl mx-auto px-4">
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{greeting()}! 👋</h1>

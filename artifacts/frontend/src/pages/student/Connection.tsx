@@ -55,7 +55,7 @@ export default function Connection() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl lg:max-w-4xl mx-auto px-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Tiffin Connection</h1>
         <p className="text-muted-foreground text-sm mt-1">Connect to your tiffin service to track bills and attendance</p>

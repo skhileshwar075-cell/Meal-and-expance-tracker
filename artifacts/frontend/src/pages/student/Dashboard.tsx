@@ -89,14 +89,14 @@ export default function StudentDashboard() {
   const { data: meals } = useGetMealSummary({ month, year });
   const { data: summary } = useGetExpenseSummary({ month, year });
   // Match staleTime with Analytics.tsx so both share the same cache options
-  const { data: rawInsights } = useGetStudentInsights({ query: { staleTime: 60_000 } });
+  const { data: rawInsights } = useGetStudentInsights({ query: { queryKey: [], staleTime: 60_000 } });
 
   const uniqueInsights = useMemo(() => {
-    if (!rawInsights) return [];
+    if (!rawInsights || !Array.isArray(rawInsights)) return [];
     const seenIds = new Set<string>();
     const seenMessages = new Set<string>();
-    return rawInsights.filter(ins => {
-      const msgKey = ins.message.trim().toLowerCase();
+    return rawInsights.filter((ins: any) => {
+      const msgKey = (ins?.message ?? "").toString().trim().toLowerCase();
       if (seenIds.has(ins.id) || seenMessages.has(msgKey)) return false;
       seenIds.add(ins.id);
       seenMessages.add(msgKey);
@@ -132,7 +132,7 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="space-y-5 max-w-3xl">
+    <div className="space-y-5 max-w-3xl lg:max-w-6xl mx-auto px-4">
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{greeting()}! 👋</h1>

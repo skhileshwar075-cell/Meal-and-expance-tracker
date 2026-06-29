@@ -54,7 +54,7 @@ export default function OwnerSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl lg:max-w-4xl mx-auto px-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage your business profile and invite code</p>

@@ -55,3 +55,13 @@ testem.log
 /typings
 .cursor/
 .github/instructions/
+
+# Vercel / hosting metadata
+.vercel/
+.vercel
+
+# Render / platform files
+render.yaml
+
+# Local IDE / OS extras
+.DS_Store
